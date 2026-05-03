@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="src/ConfigService.Api/ConfigService.Api.csproj" />
+  <Project Path="src/ConfigService.Application/ConfigService.Application.csproj" />
+  <Project Path="src/ConfigService.Domain/ConfigService.Domain.csproj" />
+  <Project Path="src/ConfigService.Infrastructure/ConfigService.Infrastructure.csproj" />
+</Solution>
