@@ -1,6 +1,12 @@
 # Workflow & Status
 
-This document defines the development workflow, task breakdown approach, and commit practices for the Configuration Service project.
+This document defines the development workflow, and commit practices.
+
+## Input:
+You must request from the user to provide you input for all variables in this section.
+When the user responds, store their answer each variable, so you can refer to it later without asking again.
+Do not proceed until the user provides it.
+- **Work Item File**: "<user response>"
 
 ## Four-Stage Development Process
 
