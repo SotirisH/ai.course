@@ -64,7 +64,9 @@ what components you will need to create or modify, and how you will ensure that 
 **Steps**
 
 1. Extract the values of {ticket_num} and {work_item_type} from the "Metadata" section.
+   - *Error handling*: If Metadata section is missing or values cannot be extracted, see [Error Handling](#error-handling) section.
 2. Read the  "Story" & acceptance criteria from {work_item_type}
+   - *Error handling*: If {work_item_type} is invalid or not found, ask the user to clarify.
 3. Identify required file changes across layers:
    - Domain (Entities, Interfaces)
    - Application (DTOs, Validators, Interfaces)
@@ -77,7 +79,7 @@ what components you will need to create or modify, and how you will ensure that 
 - Save the plan document to the appropriate location based on the current mode:
   - **In Edit mode**: Save to the ".ai/memory/episodic" directory
   - **In Ask mode**: Output the plan as a response (skip file save)
-- Format: `{work_item_type}//{ticket_num}-{feature-name}.plan.md`
+- Format: `{work_item_type}/{ticket_num}-{feature-name}.plan.md`
 - Genereate the following sections:
   - Story summary
   - Acceptance criteria (Given-When-Then)
