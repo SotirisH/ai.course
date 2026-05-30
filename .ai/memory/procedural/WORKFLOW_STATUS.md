@@ -65,7 +65,7 @@ what components you will need to create or modify, and how you will ensure that 
 
 1. Extract the values of {ticket_num} and {work_item_type} from the "Metadata" section of {work_item_file}.
    - *Error handling*: If Metadata section is missing or values cannot be extracted, see [Error Handling](#error-handling) section.
-2. **Check for existing plan file** (implements "Check for Existing Plan First" recommendation):
+2. **Check for existing plan file**:
    - Use `file_search` to look for existing plan files matching the pattern: `.ai/memory/episodic/{work_item_type}/{ticket_num}*.plan.md`
    - If a matching plan file exists:
      - Ask the user if they want to **Keep existing plan**, **Update with new insights**, or **Overwrite completely**
