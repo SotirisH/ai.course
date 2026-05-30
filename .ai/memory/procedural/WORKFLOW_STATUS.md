@@ -33,6 +33,11 @@ The agent operates in one of two modes. Actions in each stage must respect the c
 - Notify the user: *"This stage requires [Ask/Edit] mode. Current mode: [Ask/Edit]. Please switch modes to proceed."*
 - Do not attempt actions outside the current mode's capabilities.
 
+**Mode-Specific Completion Criteria Guidelines:**
+- For stages executable in both Ask and Edit modes, Completion Criteria are explicitly split per mode.
+- Criteria requiring file creation, Git operations, or code modification apply **only to Edit mode**.
+- Criteria requiring only analysis, planning, or text output apply to **both modes** (output as response in Ask mode, saved to disk in Edit mode).
+
 ### User Input:
 
 - **Work Item File**:`{work_item_file}`
@@ -49,7 +54,23 @@ The coding assistant and user must both understand and follow this process rigor
 
 1. **PLAN**: Analyze the work item, break it down into clear steps, and create a detailed implementation plan. This stage focuses on understanding the requirements and designing a solution before writing any code.
 2. **BUILD & ASSESS**: (Not implemented yet.)  Implement the solution according to the plan, then assess the implementation against the requirements and coding standards. This stage emphasizes writing clean, maintainable code and verifying that it meets the specified criteria.
+
+**Completion Criteria (Edit Mode Only):**
+- All file changes from the plan implemented
+- Unit and integration tests written and passing
+- Implementation assessed against requirements and coding standards
+- All changes committed to the feature branch
+
 3. **REFLECT & ADAPT**: (Not implemented yet) After implementation, reflect on the process and outcome. Identify what went well, what could be improved, and adapt future plans and practices based on these insights. This stage promotes continuous learning and improvement.
+
+**Completion Criteria:**
+- **Ask Mode**:
+  - Reflection output as text response
+  - Key insights and improvement recommendations identified
+- **Edit Mode**:
+  - Reflection document saved to `.ai/memory/procedural/reflections/` directory
+  - Reflection committed to feature branch
+  - Workflow/process improvements implemented and committed (if applicable)
 
 ### Stage Definitions
 
@@ -99,5 +120,14 @@ what components you will need to create or modify, and how you will ensure that 
   - All the assumptions made during planning. For each assumption, include a justification on the logic you used to make this assumption.
   - All the questions that need to be answered before implementation if there is any ambiguity in the work item
 
-**Completion Criteria**: Test strategy and file changes identified, existing plan check completed, feature branch created (Edit mode), and plan committed (Edit mode).
-
+**Completion Criteria:**
+- **Ask Mode**:
+  - Test strategy and file changes identified
+  - Existing plan check completed
+  - Plan output as text response (no file creation or Git operations)
+- **Edit Mode**:
+  - Test strategy and file changes identified
+  - Existing plan check completed
+  - Feature branch created (if not already active)
+  - Plan saved to `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature-name}.plan.md`
+  - Plan committed to feature branch
