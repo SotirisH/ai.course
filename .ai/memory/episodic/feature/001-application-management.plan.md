@@ -1,7 +1,7 @@
 # Implementation Plan: Application Management
 
 ## Story Summary
-As an administrator, I want to be able to manage applications in the system. The feature requires implementing full CRUD operations (Create, Read, Update, List) for applications via a RESTful API.
+As an administrator, I want to be able to manage applications in the system. The feature requires implementing full CRUD operations (Create, Read, Update, List) for applications via a RESTful API. Each application has a unique identifier (GUID) and is associated with related configuration IDs.
 
 ## Acceptance Criteria (Given-When-Then)
 
@@ -41,7 +41,7 @@ As an administrator, I want to be able to manage applications in the system. The
 ## Test Strategy
 
 ### Unit Tests
-- **Domain Layer**: Test Application entity creation, validation rules
+- **Domain Layer**: Test Application entity creation, validation rules (name length, comments length)
 - **Application Layer**: Test command/query handlers, validators, mapping logic
 - **Infrastructure Layer**: Test repository implementations (with mocked DbContext)
 
@@ -50,83 +50,119 @@ As an administrator, I want to be able to manage applications in the system. The
 - **Persistence**: Test DbContext configurations and migrations
 
 ### File Changes Identified
+- **Domain**: 2 new files (Entity + Interface)
+- **Application**: 13 new files (DTOs, Commands, Queries, Validators, Mappings)
+- **Infrastructure**: 4 new files (DbContext, Configuration, Repository, DependencyInjection)
+- **API**: 2 modifications + 1 new file (Controller, Program.cs, csproj)
 
-#### Domain Layer (Ai.Api.Domain)
+## File Change List
+
+### Domain Layer (Ai.Api.Domain)
+
 1. **Entities/Application.cs** (NEW)
    - Application entity with Id (Guid), Name (string, 256), Comments (string, 1024)
    - Business logic methods for updates
+   - Private constructor for EF Core
 
 2. **Interfaces/IApplicationRepository.cs** (NEW)
    - Repository interface defining CRUD operations for Application
+   - Methods: GetByIdAsync, GetAllAsync, AddAsync, UpdateAsync, ExistsByNameAsync
 
-#### Application Layer (Ai.Api.Application)
+### Application Layer (Ai.Api.Application)
+
 3. **DTOs/ApplicationDto.cs** (NEW)
-   - DTO for returning application data
+   - DTO for returning application data (Id, Name, Comments)
 
 4. **DTOs/CreateApplicationRequest.cs** (NEW)
-   - DTO for creating a new application
+   - DTO for creating a new application (Name, Comments)
 
 5. **DTOs/UpdateApplicationRequest.cs** (NEW)
-   - DTO for updating an existing application
+   - DTO for updating an existing application (Name, Comments)
 
 6. **Commands/CreateApplication/CreateApplicationCommand.cs** (NEW)
-   - MediatR command for creating application
+   - MediatR command for creating application (implements IRequest<Guid>)
+   - Properties: Name, Comments
 
 7. **Commands/CreateApplication/CreateApplicationHandler.cs** (NEW)
    - Handler for create application command
+   - Implements IRequestHandler<CreateApplicationCommand, Guid>
+   - Uses repository to add application and save changes
 
 8. **Commands/UpdateApplication/UpdateApplicationCommand.cs** (NEW)
-   - MediatR command for updating application
+   - MediatR command for updating application (implements IRequest<Unit>)
+   - Properties: Id, Name, Comments
 
 9. **Commands/UpdateApplication/UpdateApplicationHandler.cs** (NEW)
    - Handler for update application command
+   - Implements IRequestHandler<UpdateApplicationCommand, Unit>
+   - Retrieves application, updates it, saves changes
 
 10. **Queries/GetApplicationById/GetApplicationByIdQuery.cs** (NEW)
-    - MediatR query for getting application by ID
+    - MediatR query for getting application by ID (implements IRequest<ApplicationDto?>)
+    - Property: Id
 
 11. **Queries/GetApplicationById/GetApplicationByIdHandler.cs** (NEW)
     - Handler for get application by ID query
+    - Implements IRequestHandler<GetApplicationByIdQuery, ApplicationDto?>
+    - Returns mapped DTO or null if not found
 
 12. **Queries/ListApplications/ListApplicationsQuery.cs** (NEW)
-    - MediatR query for listing all applications
+    - MediatR query for listing all applications (implements IRequest<IEnumerable<ApplicationDto>>)
 
 13. **Queries/ListApplications/ListApplicationsHandler.cs** (NEW)
     - Handler for list applications query
+    - Implements IRequestHandler<ListApplicationsQuery, IEnumerable<ApplicationDto>>
+    - Returns mapped DTOs
 
 14. **Validators/CreateApplicationValidator.cs** (NEW)
     - FluentValidation validator for create request
+    - Rules: Name required, max length 256; Comments max length 1024
 
 15. **Validators/UpdateApplicationValidator.cs** (NEW)
     - FluentValidation validator for update request
+    - Rules: Id not empty; Name required, max length 256; Comments max length 1024
 
 16. **Mappings/ApplicationMappings.cs** (NEW)
     - Extension methods for mapping between entities and DTOs
+    - ToDto() extension method for Application entity
+    - ToEntity() extension method for CreateApplicationRequest
 
-#### Infrastructure Layer (Ai.Api.Infrastructure)
+### Infrastructure Layer (Ai.Api.Infrastructure)
+
 17. **Persistence/Context/ApplicationDbContext.cs** (NEW)
     - EF Core DbContext with Applications DbSet
+    - Configure for PostgreSQL
 
 18. **Persistence/Configurations/ApplicationConfiguration.cs** (NEW)
     - EF Core entity configuration for Application
+    - Configure table name, primary key, column types, unique constraint on Name
 
 19. **Persistence/Repositories/ApplicationRepository.cs** (NEW)
     - Repository implementation for Application
+    - Implements IApplicationRepository
 
 20. **DependencyInjection.cs** (NEW)
     - Service registration for Infrastructure layer
+    - Registers DbContext, Repositories
 
-#### API Layer (Ai.Api)
+### API Layer (Ai.Api)
+
 21. **Controllers/ApplicationsController.cs** (NEW)
     - API controller with POST, PUT, GET endpoints
+    - Uses MediatR to send commands/queries
+    - Returns appropriate HTTP status codes
 
 22. **Program.cs** (MODIFY)
-    - Add MediatR, DbContext, and repository registrations
+    - Add MediatR registration
+    - Add DbContext registration with PostgreSQL
+    - Add repository registrations
+    - Add FluentValidation registration
 
 23. **Ai.Api.csproj** (MODIFY)
-    - Add package references for MediatR, EF Core, Npgsql
+    - Add package references for MediatR
 
 24. **Ai.Api.Infrastructure.csproj** (MODIFY)
-    - Add package references for EF Core, Npgsql
+    - Add package references for EF Core, Npgsql, MediatR
 
 25. **Ai.Api.Application.csproj** (MODIFY)
     - Add package references for MediatR, FluentValidation
@@ -147,17 +183,18 @@ As an administrator, I want to be able to manage applications in the system. The
   - `comments` (varchar(1024), nullable)
 
 ### API Endpoints
-- `POST /api/applications` - Create application
-- `PUT /api/applications/{id}` - Update application
-- `GET /api/applications/{id}` - Get application by ID
-- `GET /api/applications` - List all applications
+- `POST /api/applications` - Create application (returns 201 with location header)
+- `PUT /api/applications/{id}` - Update application (returns 200)
+- `GET /api/applications/{id}` - Get application by ID (returns 200 or 404)
+- `GET /api/applications` - List all applications (returns 200 with array)
 
 ### Key Design Decisions
 1. **GUID for ID**: Using Guid for primary key as specified in requirements
-2. **No automapper**: Following architecture.md guidance to use manual mapping extensions
+2. **No AutoMapper**: Following architecture.md guidance to use manual mapping extensions
 3. **MediatR for CQRS**: Following architecture.md requirement to always use MediatR
 4. **FluentValidation**: For input validation in Application layer
 5. **Repository Pattern**: Abstract data access behind interface in Domain, implement in Infrastructure
+6. **Problem Details**: For error responses as per security.md (RFC 7807)
 
 ## Implementation Order
 
@@ -217,6 +254,12 @@ As an administrator, I want to be able to manage applications in the system. The
 8. **EF Core with PostgreSQL Provider**: Assumed Npgsql.EntityFrameworkCore.PostgreSQL package.
    - *Justification*: Standard PostgreSQL provider for EF Core in .NET ecosystem.
 
+9. **Problem Details for Error Responses**: Assumed RFC 7807 Problem Details should be used.
+   - *Justification*: Security.md explicitly states "Ensure validation errors follow RFC 7807 Problem Details format" and "Return generic error messages using RFC 7807 Problem Details."
+
+10. **No Generic Repository**: Assumed specific repository per entity rather than generic base.
+    - *Justification*: Architecture.md shows examples like `IProductRepository` and `ProductRepository`, indicating entity-specific repositories.
+
 ## Questions to Resolve Before Implementation
 
 1. **Database Connection**: What is the PostgreSQL connection string to use during development?
@@ -236,3 +279,7 @@ As an administrator, I want to be able to manage applications in the system. The
 
 6. **Environment for Feature**: Should this feature work only in Development or all environments?
    - *Suggestion*: Implement for all environments, Swagger UI restricted to Development only.
+
+7. **Configuration IDs**: The story mentions "associated with related configuration IDs" but the model doesn't include this. Should we add a relationship/property for this?
+   - *Suggestion*: Clarify with stakeholder; for now, implement without configuration IDs as they're not in the model.
+
