@@ -6,6 +6,7 @@ As an administrator, I want to be able to manage applications in the system
 
 work_item_type: feature
 ticket_num: 001
+feature_name: Application Management
 
 ## Acceptance Criteria
 

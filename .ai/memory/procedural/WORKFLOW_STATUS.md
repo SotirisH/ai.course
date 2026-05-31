@@ -1,93 +1,42 @@
 # Workflow & Status
-
 This document defines the development workflow, and commit practices.
 
-## Agent Instructions
+# Agent Instructions
+- You must first ensure that the "AGENTS.md" file is loaded into your memory.
+- You must then collect all user inputs from the `User Input` section below. Use the `ask_questions` tool to collect the required data. 
+For each bullet point:
+  1. ASK the user to provide the value for the **Key** (bolded text before the colon)
+  2. Wait for the user's response for each key individually
+  3. Bolded text before colon = **Key** to collect from user
+  4. Text in curly braces `{variable_name}` = variable to store the Key's value for later use
+  5. Do not proceed further until all User Input values are collected. Once stored, you can reference values by their Key name in later steps.
 
-### You must first ensure that the "AGENTS.md" file is loaded into your memory.
-
-### You must then collect all user inputs from the `User Input` section below. For each bullet point:
-
-1. ASK the user to provide the value for the **Key** (bolded text before the colon)
-2. Wait for the user's response for each key individually
-3. Bolded text before colon = **Key** to collect from user
-4. Text in curly braces `{variable_name}` = variable to store the Key's value for later use
-5. Do not proceed further until all User Input values are collected. Once stored, you can reference values by their Key name in later steps.
-
-### Mode Awareness
-
-The agent operates in one of two modes. Actions in each stage must respect the current mode:
-
-| Mode           | Capabilities | Limitations |
-|----------------|--------------|-------------|
-| **Ask/Plan**   | Read files, analyze code, generate plans, answer questions | Cannot create/modify files, cannot run Git commands, cannot create branches or commit |
-| **Edit/Agent** | All Ask capabilities plus: create/modify files, run terminal commands, execute Git operations | Full read-write access to workspace |
-
-**Stage-to-Mode Mapping:**
-
-- **PLAN stage**: Can be executed in **Ask** or **Edit** mode. In Ask mode, skip file creation and Git operations; output the plan as a response instead of saving to disk.
-- **BUILD & ASSESS stage**: Requires **Edit** mode (involves writing code and running tests).
-- **REFLECT & ADAPT stage**: Can be executed in **Ask** or **Edit** mode. In Ask mode, output reflections as a response.
-
-**If a required mode is not available:**
-- Notify the user: *"This stage requires [Ask/Edit] mode. Current mode: [Ask/Edit]. Please switch modes to proceed."*
-- Do not attempt actions outside the current mode's capabilities.
-
-**Mode-Specific Completion Criteria Guidelines:**
-- For stages executable in both Ask and Edit modes, Completion Criteria are explicitly split per mode.
-- Criteria requiring file creation, Git operations, or code modification apply **only to Edit mode**.
-- Criteria requiring only analysis, planning, or text output apply to **both modes** (output as response in Ask mode, saved to disk in Edit mode).
-
-### User Input:
-
+# User Input:
 - **Work Item File**:`{work_item_file}`
 
-## Development Process
-
+# Development Process
 Every work item follows a structured stage process to ensure quality, consistency, and continuous improvement.
 The coding assistant and user must both understand and follow this process rigorously.
 
-
-* Note:Only the first stage (PLAN) is implemented.
-
-### Process Overview
-
+## Process Overview
 1. **PLAN**: Analyze the work item, break it down into clear steps, and create a detailed implementation plan. This stage focuses on understanding the requirements and designing a solution before writing any code.
-2. **BUILD & ASSESS**: (Not implemented yet.)  Implement the solution according to the plan, then assess the implementation against the requirements and coding standards. This stage emphasizes writing clean, maintainable code and verifying that it meets the specified criteria.
-
-**Completion Criteria (Edit Mode Only):**
-- All file changes from the plan implemented
-- Unit and integration tests written and passing
-- Implementation assessed against requirements and coding standards
-- All changes committed to the feature branch
-
-3. **REFLECT & ADAPT**: (Not implemented yet) After implementation, reflect on the process and outcome. Identify what went well, what could be improved, and adapt future plans and practices based on these insights. This stage promotes continuous learning and improvement.
-
-**Completion Criteria:**
-- **Ask Mode**:
-  - Reflection output as text response
-  - Key insights and improvement recommendations identified
-- **Edit Mode**:
-  - Reflection document saved to `.ai/memory/procedural/reflections/` directory
-  - Reflection committed to feature branch
-  - Workflow/process improvements implemented and committed (if applicable)
 
 ### Stage Definitions
+These are the stages you need to follow in order to implement a feture. It is IMPORTANT to ask the user to review the output at the end of each stage. 
+You proceed to the next stage only if you have the explicit user's approval.
 
-These are the stages you need to follow in order to implement a feture. It is IMPORTANT to ask the user to review the output at the end of each stage. You proceed to the next stage only if you have the explicit user's approval.
-
-#### Stage 1: PLAN
-
+# Stage 1: PLAN
 On this stage you read and analyze the {work_item_file}. Do not write any code yet. Instead, break down the work item into clear, actionable steps.
 Create a detailed implementation plan that outlines how you will approach the task,
 what components you will need to create or modify, and how you will ensure that the solution meets the requirements.
 
-**Steps**
-
-1. Extract the values of {ticket_num} and {work_item_type} from the "Metadata" section of {work_item_file}.
+## Steps
+1. Extract the values of {ticket_num},{feature_name} and {work_item_type} from the "Metadata" section of {work_item_file}.
    - *Error handling*: If Metadata section is missing or values cannot be extracted, see [Error Handling](#error-handling) section.
-2. **Check for existing plan file**:
-   - Use `file_search` to look for existing plan files matching the pattern: `.ai/memory/episodic/{work_item_type}/{ticket_num}*.plan.md`
+2. **Check for existing plan file**. Steps:
+   1. list_dir on `.ai/memory/episodic/{work_item_type}/`
+   2. Filter results in code to find files matching `{ticket_num}*.plan.md` pattern
+- If directory doesn't exist, no existing plans to look for existing plan files matching the pattern: `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature-name}.plan.md`
    - If a matching plan file exists:
      - Ask the user if they want to **Keep existing plan**, **Update with new insights**, or **Overwrite completely**
      - If user selects "Keep existing plan": Skip remaining PLAN steps. In Edit mode, verify the existing plan is committed to the feature branch. In Ask mode, output the existing plan as the response.
@@ -101,9 +50,10 @@ what components you will need to create or modify, and how you will ensure that 
    - Infrastructure (Repositories, DbContext)
    - API (Controllers, Requests/Responses)
 
-**Output**
-
-- Create the execution plan document. 
+## Output
+Two files will be generated as output of this stage:
+### **Output A**:Plan Document
+- Create the execution plan document.
 - Save the plan document to the appropriate location based on the current mode:
   - **In Edit mode**: Save to the ".ai/memory/episodic" directory, commit to feature branch.
   - **In Ask mode**: Output the plan as a response (skip file save and Git operations).
@@ -111,7 +61,7 @@ what components you will need to create or modify, and how you will ensure that 
 - Generate the following sections:
   - Story summary
   - Acceptance criteria (Given-When-Then)
-  - Test strategy and file changes identified. 
+  - Test strategy and file changes identified.
     - In **Edit** mode: feature branch created and plan committed.
     - In **Ask** mode: plan output as response (file creation and Git operations skipped).
   - File change list
@@ -119,15 +69,27 @@ what components you will need to create or modify, and how you will ensure that 
   - Implementation order
   - All the assumptions made during planning. For each assumption, include a justification on the logic you used to make this assumption.
   - All the questions that need to be answered before implementation if there is any ambiguity in the work item
+**Completion Criteria:**
+- **Edit Mode**:
+  - [ ]  Test strategy and file changes identified
+  - [ ]  Existing plan check completed
+  - [ ]  Feature branch created (if not already active)
+  - [ ]  Plan saved to `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature-name}.plan.md`
+  - [ ]  Plan committed to feature branch
+
+### **Output B**: Reflect & Adapt Document
+* Assess the friction encountered during the workflow execution, including
+  - Violations & Showstoppers
+  - Process Friction/Workflow Gaps
+  - Tooling Friction/Missing Capabilities
+  - anything else that caused delays, confusion, or inefficiencies during the workflow execution.
+* Identify Root Causes for any issues encountered.
+* Idintify specific areas where the workflow could be improved, and propose actionable changes to address these issues. This promotes continuous learning and improvement.
+
+Save your assessment in a document within `.ai/memory/episodic/reflections/{work_item_type}-{feature_name}-{stage_name}.reflections.md`.
 
 **Completion Criteria:**
-- **Ask Mode**:
-  - Test strategy and file changes identified
-  - Existing plan check completed
-  - Plan output as text response (no file creation or Git operations)
 - **Edit Mode**:
-  - Test strategy and file changes identified
-  - Existing plan check completed
-  - Feature branch created (if not already active)
-  - Plan saved to `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature-name}.plan.md`
-  - Plan committed to feature branch
+  - [ ]  Reflection document saved to `ai/memory/episodic/reflections/` directory
+  - [ ]  Reflection committed to feature branch
+  - [ ]  Workflow/process improvements implemented and committed (if applicable)

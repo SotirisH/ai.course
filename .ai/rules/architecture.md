@@ -43,7 +43,7 @@ Domain/
 ├── Enums/              # Domain-specific enumerations
 ├── Exceptions/         # Domain-specific exceptions
 ├── Events/             # Domain events (if using event-driven architecture)
-├── Interfaces/         # Cross cutting Domain interfaces (if used)
+├── Interfaces/         # Cross cutting Domain interfaces (if used). Not repository interfaces, these should be in Application layer.
 └── Specifications/     # Business rules specifications (if used)
 ```
 
