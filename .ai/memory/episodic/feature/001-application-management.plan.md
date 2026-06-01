@@ -1,146 +1,210 @@
-# Ticket 001 — Application Management (PLAN)
+# Application Management Plan
 
 ## Story Summary
-As an administrator, I need to manage applications in the system by creating, updating, retrieving, and listing them.
+As an administrator, I want to be able to manage applications in the system.
 
-## Extracted Metadata
-- work_item_type: `feature`
-- ticket_num: `001`
-- feature_name: `Application Management`
+## Acceptance Criteria (Given-When-Then)
 
-## Acceptance Criteria (Given / When / Then)
-1. **Create application**
-   - Given I am an administrator
-   - When I send `POST /applications`
-   - Then a new application is created with a unique identifier
-2. **Update application**
-   - Given an existing application
-   - When I send `PUT /applications/{id}`
-   - Then the application data is updated
-3. **Get by id**
-   - Given an existing application id
-   - When I send `GET /applications/{id}`
-   - Then the matching application is returned
-4. **List applications**
-   - Given applications exist in the system
-   - When I send `GET /applications`
-   - Then the full list of applications is returned
+**Given** I am an administrator
+**When** I create a new application via POST `/applications`
+**Then** the application is created and returned with a unique identifier (201 Created)
 
-## Existing Plan Check
-- Existing matching plan artifacts were detected.
-- User decision: **Overwrite completely**.
-- This plan is recreated from the current work item and codebase state.
+**Given** I am an administrator
+**When** I update an existing application via PUT `/applications/{id}`
+**Then** the application is updated and the updated resource is returned (200 OK)
+
+**Given** I am an administrator
+**When** I retrieve an application via GET `/applications/{id}`
+**Then** the application with the given id is returned (200 OK), or 404 if not found
+
+**Given** I am an administrator
+**When** I list applications via GET `/applications`
+**Then** a list of all applications is returned (200 OK)
 
 ## Test Strategy and File Changes Identified
 
 ### Test Strategy
-- **Domain unit tests**
-  - Validate entity creation/update invariants (name required, max lengths).
-- **Application unit tests**
-  - Command/query handler behavior with mocked repository.
-  - Validator rules for create/update requests.
-- **Infrastructure integration tests**
-  - EF Core repository behavior against PostgreSQL test database.
-  - Unique index enforcement on application name.
-- **API integration tests**
-  - Endpoint contracts for POST/PUT/GET by id/GET list.
-  - Expected HTTP status codes for success/validation/not found/conflict.
+- Unit tests for FluentValidation validators (CreateApplication, UpdateApplication)
+- Unit tests for Wolverine command/query handlers (mocked repository)
+- Unit tests for Application entity (name validation, creation rules)
+- Integration tests for API endpoints (in-memory EF Core or Testcontainers PostgreSQL)
+
+### NuGet Packages to Install (Prerequisites)
+
+| Project | Package | Version | Reason |
+|---|---|---|---|
+| Ai.Api.Domain | *none needed* | -- | Pure domain, no external deps |
+| Ai.Api.Application | WolverineFx | 3.x | CQRS mediator per architecture rules (Section 3: "Always use wolverinefx") |
+| Ai.Api.Application | FluentValidation | 12.x | Input validation per architecture rules |
+| Ai.Api.Application | FluentValidation.DependencyInjectionExtensions | 12.x | DI registration for validators |
+| Ai.Api.Infrastructure | Microsoft.EntityFrameworkCore | 10.x | EF Core data access |
+| Ai.Api.Infrastructure | Npgsql.EntityFrameworkCore.PostgreSQL | 10.x | PostgreSQL provider |
+| Ai.Api | Microsoft.EntityFrameworkCore.Design | 10.x | EF Core tooling (migrations) |
 
 ### File Change List
 
-#### Domain layer (`src/Ai.Api.Domain`)
-- `Entities/Application.cs` (new)
-  - Domain entity with `Id`, `Name`, `Comments`, constructors/factory/update methods.
+#### Domain Layer (`Ai.Api.Domain/`)
+- `Entities/Application.cs` -- **NEW**: Application aggregate root entity
 
-#### Application layer (`src/Ai.Api.Application`)
-- `DTOs/ApplicationDto.cs` (new)
-- `DTOs/CreateApplicationRequest.cs` (new)
-- `DTOs/UpdateApplicationRequest.cs` (new)
-- `Interfaces/Repositories/IApplicationRepository.cs` (new)
-- `Commands/CreateApplication/CreateApplicationCommand.cs` (new)
-- `Commands/CreateApplication/CreateApplicationCommandHandler.cs` (new)
-- `Commands/UpdateApplication/UpdateApplicationCommand.cs` (new)
-- `Commands/UpdateApplication/UpdateApplicationCommandHandler.cs` (new)
-- `Queries/GetApplicationById/GetApplicationByIdQuery.cs` (new)
-- `Queries/GetApplicationById/GetApplicationByIdQueryHandler.cs` (new)
-- `Queries/GetApplications/GetApplicationsQuery.cs` (new)
-- `Queries/GetApplications/GetApplicationsQueryHandler.cs` (new)
-- `Validators/CreateApplicationCommandValidator.cs` (new)
-- `Validators/UpdateApplicationCommandValidator.cs` (new)
-- `Mappings/ApplicationMappings.cs` (new)
-- `DependencyInjection.cs` (new)
+#### Application Layer (`Ai.Api.Application/`)
+- `Features/Applications/DTOs/ApplicationDto.cs` -- **NEW**: Response DTO
+- `Features/Applications/DTOs/CreateApplicationRequest.cs` -- **NEW**: Create request DTO
+- `Features/Applications/DTOs/UpdateApplicationRequest.cs` -- **NEW**: Update request DTO
+- `Features/Applications/Commands/CreateApplication/CreateApplicationCommand.cs` -- **NEW**
+- `Features/Applications/Commands/CreateApplication/CreateApplicationCommandHandler.cs` -- **NEW**
+- `Features/Applications/Commands/UpdateApplication/UpdateApplicationCommand.cs` -- **NEW**
+- `Features/Applications/Commands/UpdateApplication/UpdateApplicationCommandHandler.cs` -- **NEW**
+- `Features/Applications/Queries/GetApplication/GetApplicationQuery.cs` -- **NEW**
+- `Features/Applications/Queries/GetApplication/GetApplicationQueryHandler.cs` -- **NEW**
+- `Features/Applications/Queries/GetApplications/GetApplicationsQuery.cs` -- **NEW**
+- `Features/Applications/Queries/GetApplications/GetApplicationsQueryHandler.cs` -- **NEW**
+- `Interfaces/Repositories/IApplicationRepository.cs` -- **NEW**: Repository interface
+- `Validators/CreateApplicationCommandValidator.cs` -- **NEW**
+- `Validators/UpdateApplicationCommandValidator.cs` -- **NEW**
+- `Mappings/ApplicationMappingExtensions.cs` -- **NEW**: Manual mapping extensions
+- `DependencyInjection.cs` -- **NEW**: DI registration extensions
 
-#### Infrastructure layer (`src/Ai.Api.Infrastructure`)
-- `Persistence/Context/AiApiDbContext.cs` (new)
-- `Persistence/Configurations/ApplicationEntityConfiguration.cs` (new)
-- `Persistence/Repositories/ApplicationRepository.cs` (new)
-- `DependencyInjection.cs` (new)
-- `Migrations/*` (new, generated)
+#### Infrastructure Layer (`Ai.Api.Infrastructure/`)
+- `Persistence/Context/ApplicationDbContext.cs` -- **NEW**: EF Core DbContext
+- `Persistence/Configurations/ApplicationEntityTypeConfiguration.cs` -- **NEW**
+- `Persistence/Repositories/ApplicationRepository.cs` -- **NEW**
+- `DependencyInjection.cs` -- **NEW**: DI registration extensions
 
-#### API layer (`src/Ai.Api`)
-- `Controllers/ApplicationsController.cs` (new)
-- `Program.cs` (modify)
-  - Register Application/Infrastructure services
-  - Add EF Core DbContext
-  - Add MediatR + FluentValidation pipeline
-- `appsettings.Development.json` (modify)
-  - Add development connection string
-
-#### Project dependencies (.csproj)
-- Add required package references (pinned versions):
-  - `MediatR`
-  - `FluentValidation`
-  - `FluentValidation.DependencyInjectionExtensions`
-  - `Microsoft.EntityFrameworkCore`
-  - `Npgsql.EntityFrameworkCore.PostgreSQL`
-  - `Microsoft.EntityFrameworkCore.Design` (API project for tooling)
+#### API Layer (`Ai.Api/`)
+- `Controllers/ApplicationsController.cs` -- **NEW**: REST controller
+- `Program.cs` -- **MODIFY**: Register EF Core, Wolverine, FluentValidation, Infrastructure/Application DI
+- `appsettings.Development.json` -- **MODIFY**: Add connection string
 
 ## Implementation Details
-- Implement clean architecture flow: Controller → MediatR Command/Query → Handler → Repository.
-- Keep Domain free of infrastructure dependencies.
-- Use manual mapping extension methods (per architecture guidance).
-- Enforce database uniqueness on `Application.Name`.
-- Return ProblemDetails-compatible validation responses.
+
+### Application Entity (`Ai.Api.Domain/Entities/Application.cs`)
+```csharp
+public class Application
+{
+    public Guid Id { get; private set; } = Guid.CreateVersion7();
+    public string Name { get; private set; } = null!;
+    public string? Comments { get; private set; }
+
+    private Application() { } // EF Core
+
+    public Application(string name, string? comments = null)
+    {
+        Name = name;
+        Comments = comments;
+    }
+
+    public void Update(string name, string? comments)
+    {
+        Name = name;
+        Comments = comments;
+    }
+}
+```
+
+Key design decisions:
+- `Guid.CreateVersion7()` for sequential GUID performance per architecture rules
+- Private parameterless constructor for EF Core
+- Encapsulated mutation via `Update()` method
+- Validation in property setters (Name not null/whitespace)
+
+### DTOs (Application Layer)
+- **`ApplicationDto`**: `Id` (Guid), `Name` (string), `Comments` (string?)
+- **`CreateApplicationRequest`**: `Name` (string, required), `Comments` (string?, optional)
+- **`UpdateApplicationRequest`**: `Name` (string, required), `Comments` (string?, optional)
+
+All DTOs use C# `record` types per architecture rules (Section 6: "Use records for... DTOs, Commands, Queries").
+
+### Commands & Queries (Wolverine)
+Commands (modify state):
+- `CreateApplicationCommand(Name, Comments)` → returns `ApplicationDto`
+- `UpdateApplicationCommand(Id, Name, Comments)` → returns `ApplicationDto`
+
+Queries (return data):
+- `GetApplicationQuery(Id)` → returns `ApplicationDto?`
+- `GetApplicationsQuery()` → returns `List<ApplicationDto>`
+
+All are records. Handlers are discovered automatically by Wolverine via convention.
+
+### Validation Rules (FluentValidation)
+**CreateApplicationCommandValidator** & **UpdateApplicationCommandValidator**:
+- `Name`: Required, max length 256, trimmed
+- `Comments`: Optional, max length 1024, trimmed if provided
+- `Id` (Update only): Required, not empty
+
+### Persistence Configuration (EF Core)
+- Table: `Applications`
+- `Id`: PK, Guid, clustered, generated by application (no DB generation)
+- `Name`: Required, nvarchar(256), unique index
+- `Comments`: Optional, nvarchar(1024)
+
+### API Endpoints
+
+| Method | Route | Request Body | Response |
+|---|---|---|---|
+| POST | `/api/applications` | CreateApplicationRequest | 201 Created + ApplicationDto |
+| PUT | `/api/applications/{id}` | UpdateApplicationRequest | 200 OK + ApplicationDto |
+| GET | `/api/applications/{id}` | -- | 200 OK + ApplicationDto / 404 |
+| GET | `/api/applications` | -- | 200 OK + List\<ApplicationDto\> |
+
+**Route prefix**: Uses `/api/applications` for consistency with existing `HealthController` which uses `[Route("api/[controller]")]`. The work item shows plain `/applications` but consistency within the codebase takes priority. See Questions section.
+
+### Error Handling
+- **400 Bad Request**: FluentValidation errors (via Wolverine middleware / manual validation in handler)
+- **404 Not Found**: When application with given id does not exist
+- **409 Conflict**: When attempting to create an application with a duplicate name
+- **500 Internal Server Error**: Unexpected errors (via Problem Details per RFC 7807)
+
+### Mapping Strategy
+Manual extension methods in `Ai.Api.Application/Mappings/ApplicationMappingExtensions.cs`:
+- `Application` → `ApplicationDto`
+- `CreateApplicationCommand` → `Application`
+- `Application` ↔ persistence entity (in Infrastructure layer)
+
+Per architecture rules: "Generally favor manual mapping. Create extensions for mapping."
 
 ## Implementation Order
-1. Add NuGet packages in relevant projects.
-2. Create Domain `Application` entity.
-3. Add Application repository contract.
-4. Add DTOs and mapping extensions.
-5. Add create/update commands + validators + handlers.
-6. Add get-by-id/get-all queries + handlers.
-7. Add Application layer DI registration.
-8. Add Infrastructure DbContext + configuration + repository.
-9. Add Infrastructure DI registration.
-10. Add `ApplicationsController` with CRUD(read/list) endpoints.
-11. Wire service registrations in `Program.cs`.
-12. Add connection string in `appsettings.Development.json`.
-13. Generate and review EF migration.
-14. Execute tests and endpoint verification.
 
-## Assumptions (with justification)
-1. **PostgreSQL is the target database.**
-   - Justification: Global context and security guidelines reference PostgreSQL as the primary database standard.
-2. **MediatR must be used for commands/queries.**
-   - Justification: Architecture rules explicitly require MediatR for CQRS handlers.
-3. **FluentValidation will be used for input validation.**
-   - Justification: Architecture and security guidance emphasize validator-based input checks.
-4. **Manual mappings are preferred over AutoMapper.**
-   - Justification: Architecture guidance recommends mapping extensions by default.
-5. **Controller-based API style is mandatory.**
-   - Justification: Coding style explicitly forbids Minimal APIs.
-6. **Delete endpoint is out of scope for this ticket.**
-   - Justification: Acceptance criteria include create/update/get/list only.
+1. **Install NuGet packages** across all projects
+2. **Domain**: Create `Application` entity (`Entities/Application.cs`)
+3. **Application — Interfaces**: Create `IApplicationRepository`
+4. **Application — DTOs**: Create `ApplicationDto`, `CreateApplicationRequest`, `UpdateApplicationRequest`
+5. **Application — Validators**: Create validators for create/update
+6. **Application — Commands**: Create `CreateApplicationCommand` + handler, `UpdateApplicationCommand` + handler
+7. **Application — Queries**: Create `GetApplicationQuery` + handler, `GetApplicationsQuery` + handler
+8. **Application — Mappings**: Create mapping extension methods
+9. **Application — DI**: Create `DependencyInjection` registration class
+10. **Infrastructure — Context**: Create `ApplicationDbContext`
+11. **Infrastructure — Configuration**: Create `ApplicationEntityTypeConfiguration`
+12. **Infrastructure — Repository**: Create `ApplicationRepository`
+13. **Infrastructure — DI**: Create `DependencyInjection` registration class
+14. **API — Controller**: Create `ApplicationsController`
+15. **API — Program.cs**: Wire up DI (EF Core, Wolverine, FluentValidation, Infrastructure/Application modules)
+16. **API — Config**: Add connection string to `appsettings.Development.json`
+17. **Generate initial migration**: `dotnet ef migrations add CreateApplicationsTable`
 
-## Open Questions Before Implementation
-1. Should the final routes be exactly `/applications` or `/api/applications` to align with the current controller routing convention?
-2. Acceptance criteria mentions association with related configuration IDs, but the current model omits this field. Should it be included now?
-3. For duplicate application names, is `409 Conflict` the expected API behavior?
-4. Should `GET /applications` include pagination from the start or return all records?
+## Assumptions
 
-## PLAN Completion Checklist (Edit Mode)
-- [x] Test strategy and file changes identified
-- [x] Existing plan check completed
-- [x] Feature branch active
-- [x] Plan saved to `.ai/memory/episodic/feature/001-application-management.plan.md`
-- [x] Plan committed to feature branch
+| # | Assumption | Justification |
+|---|---|---|
+| 1 | **PostgreSQL is the database** | Derived from `about.md` (PostgreSQL expertise in persona), security rules (PostgreSQL-specific security guidance), and scaffold plan referencing Npgsql. |
+| 2 | **WolverineFx for CQRS (NOT MediatR)** | Architecture rules Section 3: "Always use wolverinefx MediatR for handling commands and queries." The documentation URL points to Wolverine's mediator. The old plan incorrectly used the MediatR NuGet package. |
+| 3 | **FluentValidation for validation** | Architecture rules: "Input validation in Application layer (Validators folder)... Uses FluentValidation." |
+| 4 | **Manual mapping over AutoMapper** | Architecture rules: "Generally favor manual mapping. Create extensions for mapping." |
+| 5 | **EF Core as ORM** | Architecture rules reference EF Core entity configurations and DbContext. |
+| 6 | **Repository pattern** | Architecture rules: "Define repository interfaces in Application layer... Implement in Infrastructure layer." |
+| 7 | **Route prefix `/api`** | Existing `HealthController` uses `[Route("api/[controller]")]`. Consistency across the codebase. Flagged as a question. |
+| 8 | **No DELETE endpoint** | Work item explicitly lists only POST, PUT, GET/{id}, GET. DELETE is not mentioned. |
+| 9 | **No authentication/authorization yet** | `Program.cs` calls `UseAuthorization()` but no auth is configured. `[Authorize]` from security rules should be added but won't enforce anything until auth is wired up. |
+| 10 | **No pagination for GET** | Work item does not mention pagination. Simple list return is sufficient for now. |
+| 11 | **Duplicate name → 409 Conflict** | Standard REST practice for uniqueness constraint violations. PostgreSQL unique index will enforce at DB level; handler catches `DbUpdateException` and returns 409. |
+| 12 | **Features folder structure** | Architecture rules specify `Features/{FeatureName}/Commands/`, `Features/{FeatureName}/Queries/`, `Features/{FeatureName}/DTOs/`. This differs from the old plan's flat structure. |
+
+## Questions Needing Clarification
+
+| # | Question |
+|---|---|
+| 1 | **Route prefix**: Should endpoints be at `/applications` (as written in the work item) or `/api/applications` (consistent with existing `HealthController`)? |
+| 2 | **"Associated with related configuration IDs"**: The acceptance criteria mention this, but the Application model shows no such property. Is this a future concern, or should the entity include a configuration relationship now? |
+| 3 | **DELETE operation**: The work item shows CRU (no D). Is DELETE intentionally omitted or should it be included? |
+| 4 | **Pagination**: Should GET `/applications` support pagination (page/pageSize) from the start, or is returning all records acceptable? |
+| 5 | **Duplicate name response**: Is 409 Conflict appropriate, or would the team prefer a different status code (e.g., 422 Unprocessable Entity)? |

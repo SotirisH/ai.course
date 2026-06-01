@@ -1,30 +1,30 @@
-# Reflection: PLAN Stage for Application Management (Ticket 001)
+# Reflection: PLAN Stage — Application Management (feature-001)
 
-## Violations & Showstoppers
-- No process violations.
-- No blocking technical issues while executing this PLAN stage.
+## Friction Encountered
 
-## Process Friction / Workflow Gaps
-- Plan filename expectations differed across prior artifacts (`DeepSeek-...` vs `{ticket}-{slug}`), requiring explicit overwrite decision to normalize naming.
-- Workflow references both episodic/procedural reflection paths in different sections, which may cause ambiguity.
+### Violations & Showstoppers
+- **None.** No showstopper issues encountered during this PLAN stage.
 
-## Tooling Friction / Missing Capabilities
-- None encountered in this run.
+### Process Friction / Workflow Gaps
 
-## Other Delays or Inefficiencies
-- Existing historical artifacts from earlier runs required extra checks to confirm canonical output locations and naming.
+1. **Old plan used MediatR instead of Wolverine**
+   - **Root Cause**: The previous plan (from another AI agent) missed the architecture rule that explicitly states "Always use wolverinefx" with a documentation link. The agent defaulted to MediatR without reading `architecture.md` thoroughly.
+   - **Impact**: If implemented as-is, the project would have been built on the wrong CQRS library, requiring a painful migration later.
+   - **Proposed Fix**: The workflow should validate that the plan references align with the architecture rules explicitly before approval. Consider adding a "plan review checklist" that cross-checks each plan section against `architecture.md`, `security.md`, and `coding-style.md`.
 
-## Root Causes
-1. Inconsistent historical naming conventions from previous runs.
-2. Minor inconsistency in workflow document output path wording.
+2. **Folder structure mismatch between old plan and architecture rules**
+   - **Root Cause**: The old plan used flat folders (`Commands/CreateApplication/`, `DTOs/`) instead of the architecture-prescribed `Features/{FeatureName}/Commands/` pattern.
+   - **Impact**: Inconsistent folder structure across the codebase.
+   - **Proposed Fix**: Same as above — automated or manual plan review against architecture rules.
 
-## Improvement Opportunities
-1. Standardize plan naming to `{ticket_num}-{feature-name}.plan.md` across all runs.
-2. Clarify reflection output path in workflow to a single canonical location.
+3. **Work item ambiguity on several points**
+   - The work item (`docs/01_Application_feature.md`) is minimal (13 lines of actual content) and leaves many questions open: route prefix, DELETE omission, "configuration IDs" reference, pagination.
+   - **Root Cause**: Lightweight work item format — intentional for agile teams, but puts burden on the planning stage to identify gaps.
+   - **Impact**: Decisions are made as assumptions that need user confirmation before implementation.
+   - **Proposed Fix**: This is expected for agile workflows, but the 5 questions raised should be answered before Stage 2 (implementation) begins.
 
-## Actionable Changes Implemented
-- Recreated the plan using canonical path: `.ai/memory/episodic/feature/001-application-management.plan.md`.
-- Documented current assumptions, open questions, and layer-by-layer file impact based on actual repository state.
+### Tooling Friction / Missing Capabilities
+- **None.** All tools performed as expected. File reads, directory listings, and file creation were smooth.
 
-## Overall Assessment
-PLAN stage completed successfully with full metadata extraction, existing-plan decision handling, acceptance criteria breakdown, implementation sequencing, and reflection capture.
+## Summary
+The PLAN stage was executed successfully with a clean slate (user chose "Overwrite completely"). The new plan corrects the critical MediatR→Wolverine error from the old plan, adopts the proper `Features/{FeatureName}/` folder structure, and raises 5 clarification questions for the user to resolve before implementation.
