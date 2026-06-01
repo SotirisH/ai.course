@@ -143,5 +143,4 @@ As an administrator, I need to manage applications in the system by creating, up
 - [x] Existing plan check completed
 - [x] Feature branch active
 - [x] Plan saved to `.ai/memory/episodic/feature/001-application-management.plan.md`
-- [ ] Plan committed to feature branch
-
+- [x] Plan committed to feature branch

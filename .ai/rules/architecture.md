@@ -26,7 +26,7 @@ It serves as a guide for structuring projects to enhance scalability and adaptab
 
 ### 1. Domain Layer (Core)
 
-**Purpose:** Contains enterprise-wide business rules and entities that are independent of any specific application.
+**Purpose:** The Domain layer contains pure business logic and represents the ubiquitous language of the business.
 
 **Key Characteristics:**
 
@@ -40,6 +40,7 @@ It serves as a guide for structuring projects to enhance scalability and adaptab
 Domain/
 ├── Entities/           # Business entities (plural folder name)
 ├── ValueObjects/       # Immutable value objects
+├── Aggregates/			# Aggreggate roots 	
 ├── Enums/              # Domain-specific enumerations
 ├── Exceptions/         # Domain-specific exceptions
 ├── Events/             # Domain events (if using event-driven architecture)
@@ -53,6 +54,38 @@ Domain/
 - ValueObjects: Descriptive names (e.g., `Money`, `EmailAddress`)
 - Interfaces: Prefixed with `I` (e.g., `IProductRepository`)
 - Events: Past tense verbs (e.g., `ProductCreatedEvent`)
+
+#### Example
+```csharp
+public class Order
+{
+    private readonly List<OrderItem> _items = new();
+
+    public Guid Id { get; private set; } = Guid.CreateVersion7();
+    public Guid CustomerId { get; private set; }
+    public IReadOnlyCollection<OrderItem> Items => _items;
+
+    private Order() { } // EF Core
+
+    public Order(Guid customerId)
+    {
+        if (customerId == Guid.Empty)
+		{
+            throw new DomainException("CustomerId is required");
+		}
+        CustomerId = customerId;
+    }
+
+    public void AddItem(Guid productId, int quantity)
+    {
+        if (quantity <= 0)
+            throw new DomainException("Quantity must be positive");
+
+        _items.Add(new OrderItem(productId, quantity));
+    }
+}
+
+```
 
 ### 2. Application Layer
 
@@ -69,9 +102,11 @@ Domain/
 
 ```
 Application/
-├── Commands/           # Write operations (CQRS)
-├── Queries/            # Read operations (CQRS)
-├── DTOs/               # Data Transfer Objects (plural)
+├── Features/
+│ 	├──{FeatureName}/
+│ 	│ 	├── Commands/           # Write operations (CQRS)
+│ 	│ 	├── Queries/            # Read operations (CQRS)
+│ 	│ 	└── DTOs/               # Data Transfer Objects (plural)
 ├── Interfaces/         # Application service interfaces
 │   ├── Repositories/   # Repository interfaces
 │   └── Services/       # Service interfaces
@@ -79,7 +114,7 @@ Application/
 ├── Mappings/           # Extension classes fro mappings (default to use extension classes for mapping instead of automapper)
 ├── Validators/         # Input validation (FluentValidation)
 ├── EventHandlers/      # Domain event handlers
-└── Behaviors/          # MediatR pipeline behaviors (logging, validation, etc.)
+└── Pipiline/           # Wolverine pipelines (logging, validation, etc.)
 ```
 
 **Naming Conventions:**
@@ -123,16 +158,45 @@ Infrastructure/
 - Service implementations: Interface name without "I" prefix (e.g., `EmailService` for `IEmailService`)
 - Configuration classes: Descriptive names ending with "Options" or "Settings" (e.g., `SmtpSettings`)
 
+
+#### Example
+```csharp
+public class OrderRepository : IOrderRepository
+{
+    private readonly AppDbContext _db;
+
+    public OrderRepository(AppDbContext db) => _db = db;
+
+    public async Task AddAsync(Order order)
+    {
+        var entity = order.ToEntity(); // mapping extension
+        _db.Orders.Add(entity);
+        await _db.SaveChangesAsync();
+    }
+
+    public async Task<Order?> GetByIdAsync(Guid id)
+    {
+        var entity = await _db.Orders.Include(o => o.Items)
+                                     .FirstOrDefaultAsync(o => o.Id == id);
+        return entity?.ToDomain();
+    }
+}
+
+```
+
 ### 4. Presentation Layer
 
 **Purpose:** Handles user interaction and system entry points (API, UI, etc.).
 
 **Key Characteristics:**
 
-- Depends on all inner layers
+- Depends on application and domain layers.
+- It has a dependency on the infrastructure layer, but it is used only for the DI  setup.  No concepts or classes should leak from the infrastructure layer here.
 - Contains only presentation concerns (controllers, views, middleware)
 - Translates external requests to application layer commands/queries
 - Handles cross-cutting concerns like authentication, authorization, and validation at the boundary
+
+
 
 **Standard Folder Structure (Web API):**
 
@@ -143,6 +207,8 @@ Presentation/ or Api/
 ├── Filters/            # Action filters, exception filters
 ├── Hubs/               # SignalR hubs (if used)
 ├── Models/             # View models or input models specific to presentation
+│	├── Requests
+│	└── Responses
 ├── Properties/         # Launch settings, profiles
 ├── Hubs/               # SignalR hubs
 └── HealthChecks/       # Health check endpoints
@@ -154,7 +220,7 @@ Presentation/ or Api/
 - Actions: HTTP verb + descriptive name (e.g., `GetById`, `CreateProduct`)
 - Middleware: Descriptive name + "Middleware" (e.g., `LoggingMiddleware`)
 - Filters: Descriptive name + "Filter" (e.g., `ValidationFilter`)
-- Models: Descriptive names indicating purpose (e.g., `ProductViewModel`, `LoginRequest`)
+- Models: Descriptive names indicating purpose (e.g., `ProductCreateRequest`, `ProductCreateResponse`)
 
 ## Dependency Rules
 
@@ -185,47 +251,89 @@ Infrastructure Layer
 - **Consistent Casing:** Use PascalCase for all folder and file names
 - **Descriptive Names:** Folders should clearly indicate their purpose
 
-### Alternative Feature-Based Structure
+## Other Concerns
 
-For larger applications, consider grouping by feature within layers:
+### 1. DTO Clarification Across Layers
+DTOs appear in three layers, each with a different purpose.
+---
+3.1 API DTOs (Request/Response Models)
+Location: Presentation layer
+Purpose: Define the public API contract  
+Notes: May flatten or reshape data for clients
+
+Example:
+```csharp
+public record CreateOrderRequest(Guid CustomerId, List<OrderItemRequest> Items);
+public record OrderResponse(Guid Id, decimal Total, string CustomerName);
+```
+---
+3.2 Application DTOs
+Location: Application layer
+Purpose: Represent use-case outputs  
+Notes: Internal only — not exposed to API
+
+Example:
+```csharp
+public record OrderDto(Guid Id, decimal Total, CustomerDto Customer);
+```
+
+3.3 Persistence DTOs (ORM Entities)
+Location: Infrastructure layer
+Purpose: Represent database tables
+Notes: Must never leak outside Infrastructure
+
+Example:
+```csharp
+public class OrderEntity
+{
+    public Guid Id { get; set; }
+    public Guid CustomerId { get; set; }
+    public List<OrderItemEntity> Items { get; set; } = new();
+}
 
 ```
-Application/
-├── Features/
-│   ├── Products/
-│   │   ├── Commands/
-│   │   ├── Queries/
-│   │   └── DTOs/
-│   └── Orders/
-│       ├── Commands/
-│       ├── Queries/
-│       └── DTOs/
-└── Shared/             # Cross-cutting concerns
-```
-
-## Cross-Layer Concerns
-
-### 1. Data Transfer Objects (DTOs)
-
-- Located in Application layer
-- Used for data exchange between layers
-- Never expose domain entities directly to outer layers
-- Naming: Descriptive + "Dto" or context-specific ("Request"/"Response")
 
 ### 2. Mapping
 
-**Use autommapper only if you have to map dymanic obkects!**
+**Use autommapper only if you have to map dymanic objects!**
 
 - Generally favor manuall mapping. Create extenions for mapping. These extenisions should be in a separate folder in Application layer.
 
+Request flow
+```
+API Layer
+   ↓ (maps request → command)
+Application Layer
+   ↓ (maps command → domain entity)
+Domain Layer
+   ↓ (business logic)
+Application Layer
+   ↓ (calls repository interface)
+Infrastructure Layer
+   ↓ (maps domain entity → persistence entity)
+Database
+```
+
+Response flow
+```
+Infrastructure Layer
+   ↓ (maps persistence entity → to applicationDto) 	If projection OR
+   ↓ (maps persistence entity → to domain entity) 	If simple case
+Application Layer
+   ↓ (passes applicationDto or domain entity to API Layer)
+API Layer
+   ↓ (maps applicationDto or domain entity to response model)
+```
+
 - In case you have to use Autommaper,  create profiles in Application layer
+
 
 ### 3. Validation
 
 * Input validation in Application layer (Validators folder)
 
-- Uses FluentValidation or similar
-- Can be implemented as MediatR pipeline behaviors
+- Uses FluentValidation
+- Can be implemented as  pipeline behavior
 
 ### 4. Error Handling
 
@@ -236,8 +344,6 @@ Application/
 
 ### 5. Logging
 
-- Abstraction (ILogger) defined in Application or Domain
-- Implementation in Infrastructure layer
 - Used across all layers via dependency injection
 
 ## Project Dependencies Template
@@ -256,7 +362,7 @@ Application/
 [SolutionName].Presentation
     → [SolutionName].Domain
     → [SolutionName].Application
-    → [SolutionName].Infrastructure
+    → [SolutionName].Infrastructure *ONLY for DI purposes 
 ```
 
 ## Implementation Guidelines
@@ -265,8 +371,43 @@ Application/
 
 - Entities should have protected/setterless constructors
 - Collections should be initialized as `ICollection<T>` or `IReadOnlyCollection<T>`
-- Use private setters for properties that should only be changed through methods
+- Use private setters for properties
 - Encapsulate business logic within entities when possible
+- Use Guid.CreateVersion7() for generating IDs instead of int or Guid.NewGuid() to avoid performance issues with sequential GUIDs in databases
+Example:
+
+```csharp
+public class Application
+{
+    public  Guid Id { get; private set; } = Guid.CreateVersion7();
+    public string Name
+    {
+        get;
+        private set
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                throw new ArgumentException("Application name is required.", nameof(Name));
+            }
+
+            field = value;
+        }
+    } = null!;
+
+    public string? Comments { get; private set; }
+
+    // Private constructor for EF Core
+    private Application() { }
+
+    public Application(Guid id, string name, string? comments = null)
+    {
+        Id = id;
+        Name = name;
+        Comments = comments;
+    }
+}
+```
+
 
 ### 2. Repository Pattern
 
@@ -275,8 +416,10 @@ Application/
 - Methods should return domain entities or DTOs (never expose EF Core entities directly)
 - Consider generic base repository for common operations
 
-### 3. CQRS with MediatR
-**Always** use MediatR for handling commands and queries in Application layer. This promotes separation of concerns and keeps controllers thin.
+### 3. CQRS with wolverinefx
+
+**Always** use wolverinefx MediatR for handling commands and queries in Application layer. This promotes separation of concerns and keeps controllers thin.
+Documentation: https://wolverinefx.net/guide/http/mediator.html
 - Commands modify state (returns void or entity ID)
 - Queries return data (never modify state)
 - Handlers contain single use case logic
@@ -289,10 +432,19 @@ Application/
 - Follow lifetime scoping principles (Transient, Scoped, Singleton)
 
 ### 5. Configuration
-
 - Strongly-typed options pattern
 - Validation of configuration at startup
 - Separate configuration files per environment
+
+### 6. Records
+Use records for:
+- Value objects
+- Complex types
+- DTOs
+- Query projections
+- Commands
+- Queries
+
 
 ## Benefits of This Structure
 
