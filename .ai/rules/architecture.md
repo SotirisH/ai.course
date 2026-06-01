@@ -52,7 +52,7 @@ Domain/
 
 - Entities: Singular nouns (e.g., `Product`, `Customer`)
 - ValueObjects: Descriptive names (e.g., `Money`, `EmailAddress`)
-- Interfaces: Prefixed with `I` (e.g., `IProductRepository`)
+- Interfaces: Prefixed with `I` (e.g., `IBizzRule`, `IDomainService`)
 - Events: Past tense verbs (e.g., `ProductCreatedEvent`)
 
 #### Example
@@ -111,10 +111,10 @@ Application/
 │   ├── Repositories/   # Repository interfaces
 │   └── Services/       # Service interfaces
 ├── Profiles/           # AutoMapper profiles (only if you need to use automapper)
-├── Mappings/           # Extension classes fro mappings (default to use extension classes for mapping instead of automapper)
+├── Mappings/           # Extension classes for mappings (default to use extension classes for mapping instead of automapper)
 ├── Validators/         # Input validation (FluentValidation)
 ├── EventHandlers/      # Domain event handlers
-└── Pipiline/           # Wolverine pipelines (logging, validation, etc.)
+└── Pipeline/           # Wolverine pipelines (logging, validation, etc.)
 ```
 
 **Naming Conventions:**
@@ -195,9 +195,8 @@ public class OrderRepository : IOrderRepository
 - Contains only presentation concerns (controllers, views, middleware)
 - Translates external requests to application layer commands/queries
 - Handles cross-cutting concerns like authentication, authorization, and validation at the boundary
-
-
-
+- All the requests and responses should be defined in this layer.
+- The API should not expose domain entities or application DTOs directly. Instead, it should define its own request and response models that are specific to the API contract.
 **Standard Folder Structure (Web API):**
 
 ```
@@ -210,7 +209,6 @@ Presentation/ or Api/
 │	├── Requests
 │	└── Responses
 ├── Properties/         # Launch settings, profiles
-├── Hubs/               # SignalR hubs
 └── HealthChecks/       # Health check endpoints
 ```
 
@@ -225,13 +223,11 @@ Presentation/ or Api/
 ## Dependency Rules
 
 ```
-Presentation Layer
+Presentation Layer -> Domain Layer
         ↓
-Application Layer
-        ↓
-Domain Layer
+Application Layer  -> Domain Layer
         ↑
-Infrastructure Layer
+Infrastructure Layer  -> Domain Layer
 ```
 
 **Key Principles:**
@@ -256,7 +252,7 @@ Infrastructure Layer
 ### 1. DTO Clarification Across Layers
 DTOs appear in three layers, each with a different purpose.
 ---
-3.1 API DTOs (Request/Response Models)
+#### API DTOs (Request/Response Models)
 Location: Presentation layer
 Purpose: Define the public API contract  
 Notes: May flatten or reshape data for clients
@@ -267,7 +263,7 @@ public record CreateOrderRequest(Guid CustomerId, List<OrderItemRequest> Items);
 public record OrderResponse(Guid Id, decimal Total, string CustomerName);
 ```
 ---
-3.2 Application DTOs
+#### Application DTOs
 Location: Application layer
 Purpose: Represent use-case outputs  
 Notes: Internal only — not exposed to API
@@ -277,7 +273,7 @@ Example:
 public record OrderDto(Guid Id, decimal Total, CustomerDto Customer);
 ```
 
-3.3 Persistence DTOs (ORM Entities)
+####  Persistence DTOs (ORM Entities)
 Location: Infrastructure layer
 Purpose: Represent database tables
 Notes: Must never leak outside Infrastructure
@@ -297,7 +293,7 @@ public class OrderEntity
 
 **Use autommapper only if you have to map dymanic objects!**
 
-- Generally favor manuall mapping. Create extenions for mapping. These extenisions should be in a separate folder in Application layer.
+- Generally favor manuall mapping. Create extensions for mapping. These extenisions should be in a separate folder in Application layer.
 
 Request flow
 ```
@@ -369,7 +365,7 @@ API Layer
 
 ### 1. Entity Design
 
-- Entities should have protected/setterless constructors
+- The parameterless constructor should be protected/private and only used by EF Core. For creating new instances, use public constructors with required parameters to ensure valid state.
 - Collections should be initialized as `ICollection<T>` or `IReadOnlyCollection<T>`
 - Use private setters for properties
 - Encapsulate business logic within entities when possible

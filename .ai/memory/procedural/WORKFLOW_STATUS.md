@@ -36,7 +36,7 @@ what components you will need to create or modify, and how you will ensure that 
 2. **Check for existing plan file**. Steps:
    1. list_dir on `.ai/memory/episodic/{work_item_type}/`
    2. Filter results in code to find files matching `{ticket_num}*.plan.md` pattern
-- If directory doesn't exist, no existing plans to look for existing plan files matching the pattern: `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature-name}.plan.md`
+- If directory doesn't exist, no existing plans to look for existing plan files matching the pattern: `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}.plan.md`
    - If a matching plan file exists:
      - Ask the user if they want to **Keep existing plan**, **Update with new insights**, or **Overwrite completely**
      - If user selects "Keep existing plan": Skip remaining PLAN steps. In Edit mode, verify the existing plan is committed to the feature branch. In Ask mode, output the existing plan as the response.
@@ -57,7 +57,7 @@ Two files will be generated as output of this stage:
 - Save the plan document to the appropriate location based on the current mode:
   - **In Edit mode**: Save to the ".ai/memory/episodic" directory, commit to feature branch.
   - **In Ask mode**: Output the plan as a response (skip file save and Git operations).
-- Format: `{work_item_type}/{ticket_num}-{feature-name}.plan.md` (derive {feature-name} from the work item's story title, e.g., "Application Management" → "application-management")
+- Format: `{work_item_type}/{ticket_num}-{feature_name}.plan.md` (derive {feature_name} from the work item's story title, e.g., "Application Management" → "application-management")
 - Generate the following sections:
   - Story summary
   - Acceptance criteria (Given-When-Then)

@@ -1,30 +1,37 @@
-# Reflection: PLAN Stage — Application Management (feature-001)
+# Reflection: Application Management – PLAN Stage
 
-## Friction Encountered
+**Date:** 2026-06-01  
+**Stage:** PLAN  
+**Feature:** 001-application-management
 
-### Violations & Showstoppers
-- **None.** No showstopper issues encountered during this PLAN stage.
+---
 
-### Process Friction / Workflow Gaps
+## Violations & Showstoppers
 
-1. **Old plan used MediatR instead of Wolverine**
-   - **Root Cause**: The previous plan (from another AI agent) missed the architecture rule that explicitly states "Always use wolverinefx" with a documentation link. The agent defaulted to MediatR without reading `architecture.md` thoroughly.
-   - **Impact**: If implemented as-is, the project would have been built on the wrong CQRS library, requiring a painful migration later.
-   - **Proposed Fix**: The workflow should validate that the plan references align with the architecture rules explicitly before approval. Consider adding a "plan review checklist" that cross-checks each plan section against `architecture.md`, `security.md`, and `coding-style.md`.
+None encountered during this PLAN stage.
 
-2. **Folder structure mismatch between old plan and architecture rules**
-   - **Root Cause**: The old plan used flat folders (`Commands/CreateApplication/`, `DTOs/`) instead of the architecture-prescribed `Features/{FeatureName}/Commands/` pattern.
-   - **Impact**: Inconsistent folder structure across the codebase.
-   - **Proposed Fix**: Same as above — automated or manual plan review against architecture rules.
+---
 
-3. **Work item ambiguity on several points**
-   - The work item (`docs/01_Application_feature.md`) is minimal (13 lines of actual content) and leaves many questions open: route prefix, DELETE omission, "configuration IDs" reference, pagination.
-   - **Root Cause**: Lightweight work item format — intentional for agile teams, but puts burden on the planning stage to identify gaps.
-   - **Impact**: Decisions are made as assumptions that need user confirmation before implementation.
-   - **Proposed Fix**: This is expected for agile workflows, but the 5 questions raised should be answered before Stage 2 (implementation) begins.
+## Process Friction / Workflow Gaps
 
-### Tooling Friction / Missing Capabilities
-- **None.** All tools performed as expected. File reads, directory listings, and file creation were smooth.
+| # | Issue | Root Cause | Proposed Action |
+|---|-------|-----------|-----------------|
+| 1 | Work item file (`01_Application_feature.md`) is minimal — lacks detail on error scenarios, validation rules, and the "configuration IDs" relationship | No standardized work item template with required fields | Propose a work item template with sections for: model schema, validation rules, error handling expectations, and relationship definitions |
+| 2 | Route convention ambiguity: existing `HealthController` uses `api/[controller]` but work item specifies `/applications` (no `/api` prefix) | No documented API route convention in the architecture or coding-style rules | Add an API route convention rule to `architecture.md` or `coding-style.md` to clarify the standard prefix |
+| 3 | Work item mentions "associated with related configuration IDs" but the model definition doesn't include this field | Acceptance criteria and model definition are inconsistent | This has been flagged as Q1 in the plan; the answer should feed back into the work item or a follow-up ticket |
 
-## Summary
-The PLAN stage was executed successfully with a clean slate (user chose "Overwrite completely"). The new plan corrects the critical MediatR→Wolverine error from the old plan, adopts the proper `Features/{FeatureName}/` folder structure, and raises 5 clarification questions for the user to resolve before implementation.
+---
+
+## Tooling Friction / Missing Capabilities
+
+| # | Issue | Root Cause | Proposed Action |
+|---|-------|-----------|-----------------|
+| 1 | No automated way to validate the plan against architecture rules before implementation | Planning is manual; no linting for plan completeness | Consider creating a plan checklist/template that covers: all 4 layers analyzed, packages identified, DI registration noted, test strategy defined |
+
+---
+
+## Other Observations
+
+- The scaffolded project structure is clean and well-aligned with the architecture document. The empty folders for Entities, Interfaces, Configurations, Context, and Repositories are ready for implementation.
+- The existing `HealthController` route uses `api/[controller]` — this may set a precedent for all controllers. Clarification needed (see Q2).
+- No `.editorconfig` file was found in the workspace root despite being referenced in `coding-style.md`. This should be verified or created.
