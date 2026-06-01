@@ -47,9 +47,7 @@ As an administrator, I want to be able to manage applications in the system.
 - `Entities/Application.cs` -- **NEW**: Application aggregate root entity
 
 #### Application Layer (`Ai.Api.Application/`)
-- `Features/Applications/DTOs/ApplicationDto.cs` -- **NEW**: Response DTO
-- `Features/Applications/DTOs/CreateApplicationRequest.cs` -- **NEW**: Create request DTO
-- `Features/Applications/DTOs/UpdateApplicationRequest.cs` -- **NEW**: Update request DTO
+- `Features/Applications/DTOs/ApplicationDto.cs` -- **NEW**: Application output DTO (internal use-case result)
 - `Features/Applications/Commands/CreateApplication/CreateApplicationCommand.cs` -- **NEW**
 - `Features/Applications/Commands/CreateApplication/CreateApplicationCommandHandler.cs` -- **NEW**
 - `Features/Applications/Commands/UpdateApplication/UpdateApplicationCommand.cs` -- **NEW**
@@ -61,7 +59,7 @@ As an administrator, I want to be able to manage applications in the system.
 - `Interfaces/Repositories/IApplicationRepository.cs` -- **NEW**: Repository interface
 - `Validators/CreateApplicationCommandValidator.cs` -- **NEW**
 - `Validators/UpdateApplicationCommandValidator.cs` -- **NEW**
-- `Mappings/ApplicationMappingExtensions.cs` -- **NEW**: Manual mapping extensions
+- `Mappings/ApplicationMappingExtensions.cs` -- **NEW**: Manual mapping extensions (Domain ↔ DTO, Command → Domain)
 - `DependencyInjection.cs` -- **NEW**: DI registration extensions
 
 #### Infrastructure Layer (`Ai.Api.Infrastructure/`)
@@ -71,7 +69,9 @@ As an administrator, I want to be able to manage applications in the system.
 - `DependencyInjection.cs` -- **NEW**: DI registration extensions
 
 #### API Layer (`Ai.Api/`)
-- `Controllers/ApplicationsController.cs` -- **NEW**: REST controller
+- `Models/Requests/CreateApplicationRequest.cs` -- **NEW**: POST body contract
+- `Models/Requests/UpdateApplicationRequest.cs` -- **NEW**: PUT body contract
+- `Controllers/ApplicationsController.cs` -- **NEW**: REST controller (maps Requests → Commands, DTOs → Responses)
 - `Program.cs` -- **MODIFY**: Register EF Core, Wolverine, FluentValidation, Infrastructure/Application DI
 - `appsettings.Development.json` -- **MODIFY**: Add connection string
 
@@ -107,12 +107,31 @@ Key design decisions:
 - Encapsulated mutation via `Update()` method
 - Validation in property setters (Name not null/whitespace)
 
-### DTOs (Application Layer)
-- **`ApplicationDto`**: `Id` (Guid), `Name` (string), `Comments` (string?)
-- **`CreateApplicationRequest`**: `Name` (string, required), `Comments` (string?, optional)
-- **`UpdateApplicationRequest`**: `Name` (string, required), `Comments` (string?, optional)
+### DTOs
 
-All DTOs use C# `record` types per architecture rules (Section 6: "Use records for... DTOs, Commands, Queries").
+**Application Layer** (`Ai.Api.Application/Features/Applications/DTOs/`):
+- **`ApplicationDto`**: `Id` (Guid), `Name` (string), `Comments` (string?) — internal use-case output only
+
+**API Layer** (`Ai.Api/Models/Requests/`):
+- **`CreateApplicationRequest`**: `Name` (string, required), `Comments` (string?, optional) — public POST contract
+- **`UpdateApplicationRequest`**: `Name` (string, required), `Comments` (string?, optional) — public PUT contract
+
+All use C# `record` types per architecture rules (Section 6: "Use records for... DTOs, Commands, Queries").
+
+### Data Flow
+
+```
+POST /api/applications
+  CreateApplicationRequest  ──controller maps──→  CreateApplicationCommand  ──handler maps──→  Application (domain)
+                                                                                                  │
+                                                                                           IApplicationRepository
+                                                                                                  │
+GET  /api/applications/{id}                                                                       ▼
+  ApplicationDto  ←──handler maps──  Application (domain)  ←──repository──  ApplicationEntity (infra)
+      │
+      ▼
+  controller returns 200 OK + body (ApplicationDto serialized directly)
+```
 
 ### Commands & Queries (Wolverine)
 Commands (modify state):
@@ -130,6 +149,8 @@ All are records. Handlers are discovered automatically by Wolverine via conventi
 - `Name`: Required, max length 256, trimmed
 - `Comments`: Optional, max length 1024, trimmed if provided
 - `Id` (Update only): Required, not empty
+
+Note: Validation lives in the Application layer on Commands, not on API Request models. The controller maps Requests → Commands, and Wolverine/FluentValidation validates the Commands before handlers execute.
 
 ### Persistence Configuration (EF Core)
 - Table: `Applications`
@@ -155,10 +176,19 @@ All are records. Handlers are discovered automatically by Wolverine via conventi
 - **500 Internal Server Error**: Unexpected errors (via Problem Details per RFC 7807)
 
 ### Mapping Strategy
-Manual extension methods in `Ai.Api.Application/Mappings/ApplicationMappingExtensions.cs`:
+Manual extension methods:
+
+**Application Layer** (`Ai.Api.Application/Mappings/ApplicationMappingExtensions.cs`):
 - `Application` → `ApplicationDto`
-- `CreateApplicationCommand` → `Application`
-- `Application` ↔ persistence entity (in Infrastructure layer)
+- `CreateApplicationCommand` → `Application` (factory method)
+- `UpdateApplicationCommand` → applies `Application.Update()` on existing entity
+
+**API Layer** (inline in controller, or `Ai.Api/Mappings/`):
+- `CreateApplicationRequest` → `CreateApplicationCommand`
+- `UpdateApplicationRequest` + route `{id}` → `UpdateApplicationCommand`
+
+**Infrastructure Layer** (inline in repository):
+- `Application` ↔ `ApplicationEntity` (persistence entity)
 
 Per architecture rules: "Generally favor manual mapping. Create extensions for mapping."
 
@@ -167,20 +197,21 @@ Per architecture rules: "Generally favor manual mapping. Create extensions for m
 1. **Install NuGet packages** across all projects
 2. **Domain**: Create `Application` entity (`Entities/Application.cs`)
 3. **Application — Interfaces**: Create `IApplicationRepository`
-4. **Application — DTOs**: Create `ApplicationDto`, `CreateApplicationRequest`, `UpdateApplicationRequest`
-5. **Application — Validators**: Create validators for create/update
-6. **Application — Commands**: Create `CreateApplicationCommand` + handler, `UpdateApplicationCommand` + handler
-7. **Application — Queries**: Create `GetApplicationQuery` + handler, `GetApplicationsQuery` + handler
-8. **Application — Mappings**: Create mapping extension methods
-9. **Application — DI**: Create `DependencyInjection` registration class
-10. **Infrastructure — Context**: Create `ApplicationDbContext`
-11. **Infrastructure — Configuration**: Create `ApplicationEntityTypeConfiguration`
-12. **Infrastructure — Repository**: Create `ApplicationRepository`
-13. **Infrastructure — DI**: Create `DependencyInjection` registration class
-14. **API — Controller**: Create `ApplicationsController`
-15. **API — Program.cs**: Wire up DI (EF Core, Wolverine, FluentValidation, Infrastructure/Application modules)
-16. **API — Config**: Add connection string to `appsettings.Development.json`
-17. **Generate initial migration**: `dotnet ef migrations add CreateApplicationsTable`
+4. **Application — DTOs**: Create `ApplicationDto`
+5. **API — Models**: Create `CreateApplicationRequest`, `UpdateApplicationRequest`
+6. **Application — Validators**: Create validators for create/update commands
+7. **Application — Commands**: Create `CreateApplicationCommand` + handler, `UpdateApplicationCommand` + handler
+8. **Application — Queries**: Create `GetApplicationQuery` + handler, `GetApplicationsQuery` + handler
+9. **Application — Mappings**: Create mapping extension methods
+10. **Application — DI**: Create `DependencyInjection` registration class
+11. **Infrastructure — Context**: Create `ApplicationDbContext`
+12. **Infrastructure — Configuration**: Create `ApplicationEntityTypeConfiguration`
+13. **Infrastructure — Repository**: Create `ApplicationRepository`
+14. **Infrastructure — DI**: Create `DependencyInjection` registration class
+15. **API — Controller**: Create `ApplicationsController`
+16. **API — Program.cs**: Wire up DI (EF Core, Wolverine, FluentValidation, Infrastructure/Application modules)
+17. **API — Config**: Add connection string to `appsettings.Development.json`
+18. **Generate initial migration**: `dotnet ef migrations add CreateApplicationsTable`
 
 ## Assumptions
 
