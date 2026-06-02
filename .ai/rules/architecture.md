@@ -438,7 +438,7 @@ builder.Services.ConfigureWolverine(options =>
     options.CodeGeneration.AlwaysUseServiceLocationFor<AppDbContext>();
 });
 ```
-
+- Wolverine by is running by default in TypeLoadMode.Dynamic, which compiles handler/middleware code at runtime and WolverineFx no longer ships the runtime compiler. Always include the 'WolverineFx.RuntimeCompilation' NuGet package
 
 ### 4. Dependency Injection
 
