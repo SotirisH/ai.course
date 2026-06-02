@@ -422,7 +422,13 @@ Documentation: https://wolverinefx.net/guide/http/mediator.html
 - Place the command or query object in the same file as the handler
 - Use middlewares for cross-cutting concerns (validation, logging, caching). Examples
   - For validations use `Fluent Validation Middleware`. Info: https://wolverinefx.net/guide/handlers/fluent-validation.html
-  - 
+- Because wolverine has issues with constructor injection for DbContext, we need to configure it to use service location for AppDbContext. Use the [Splitting Configuration](https://wolverinefx.net/guide/configuration.html#splitting-configuration-across-modules) Across Modules and place the initialization code in the Infrastructure layer. Example:
+```csharp
+builder.Services.ConfigureWolverine(options =>
+{
+    options.CodeGeneration.AlwaysUseServiceLocationFor<AppDbContext>();
+});
+```
 
 
 ### 4. Dependency Injection
