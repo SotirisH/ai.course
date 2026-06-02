@@ -74,7 +74,7 @@ Two files will be generated as output of this stage:
   - [ ]  Test strategy and file changes identified
   - [ ]  Existing plan check completed
   - [ ]  Feature branch created (if not already active)
-  - [ ]  Plan saved to `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature-name}.plan.md`
+  - [ ]  Plan saved to `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature-name}/{ticket_num}-{feature-name}.plan.md`
   - [ ]  Plan committed to feature branch
 
 ### **Output B**: Reflect & Adapt Document
@@ -86,10 +86,10 @@ Two files will be generated as output of this stage:
 * Identify Root Causes for any issues encountered.
 * Idintify specific areas where the workflow could be improved, and propose actionable changes to address these issues. This promotes continuous learning and improvement.
 
-Save your assessment in a document within `.ai/memory/episodic/reflections/{work_item_type}-{feature_name}-{stage_name}.reflections.md`.
+Save your assessment in a document within `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature-name}/{stage_name}.reflections.md`.
 
 **Completion Criteria:**
 - **Edit Mode**:
-  - [ ]  Reflection document saved to `ai/memory/episodic/reflections/` directory
+  - [ ]  Reflection document saved to `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature-name}/` directory
   - [ ]  Reflection committed to feature branch
   - [ ]  Workflow/process improvements implemented and committed (if applicable)

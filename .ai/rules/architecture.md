@@ -413,16 +413,25 @@ public class Application
 - Consider generic base repository for common operations
 
 ### 3. CQRS with wolverinefx
-
 **Always** use wolverinefx MediatR for handling commands and queries in Application layer. This promotes separation of concerns and keeps controllers thin.
 Documentation: https://wolverinefx.net/guide/http/mediator.html
 - Commands modify state (returns void or entity ID)
 - Queries return data (never modify state)
 - Handlers contain single use case logic
-- Place the command or query object in the same file as the handler
-- Use middlewares for cross-cutting concerns (validation, logging, caching). Examples
-  - For validations use `Fluent Validation Middleware`. Info: https://wolverinefx.net/guide/handlers/fluent-validation.html
-- Because wolverine has issues with constructor injection for DbContext, we need to configure it to use service location for AppDbContext. Use the [Splitting Configuration](https://wolverinefx.net/guide/configuration.html#splitting-configuration-across-modules) Across Modules and place the initialization code in the Infrastructure layer. Example:
+- Place the command or query object in the same file as the handler. The name of the file should be the same as the name of the command or query handler.Example: `CreateProductCommandHandler.cs` contains both the `CreateProductCommand` class and the `CreateProductCommandHandler` class.
+- For validations use `Fluent Validation Middleware`. Info: https://wolverinefx.net/guide/handlers/fluent-validation.html. Example:
+```csharp
+    services.UseWolverine(opts =>
+    {
+        // Apply the validation middleware *and* discover and register
+        // Fluent Validation validators
+        opts.UseFluentValidation();
+
+        // Just a prerequisite for some of the test validators
+        opts.Services.AddSingleton<IDataService, DataService>();
+    })
+````
+- Initialize wolverine in the Application layer, but configure it to use service location for DbContext in the Infrastructure layer to avoid constructor injection issues. See the configuration example below.
 ```csharp
 builder.Services.ConfigureWolverine(options =>
 {
