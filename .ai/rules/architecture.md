@@ -419,7 +419,11 @@ Documentation: https://wolverinefx.net/guide/http/mediator.html
 - Commands modify state (returns void or entity ID)
 - Queries return data (never modify state)
 - Handlers contain single use case logic
-- Use pipeline behaviors for cross-cutting concerns (validation, logging, caching)
+- Place the command or query object in the same file as the handler
+- Use middlewares for cross-cutting concerns (validation, logging, caching). Examples
+  - For validations use `Fluent Validation Middleware`. Info: https://wolverinefx.net/guide/handlers/fluent-validation.html
+  - 
+
 
 ### 4. Dependency Injection
 

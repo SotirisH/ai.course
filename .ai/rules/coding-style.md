@@ -8,3 +8,14 @@ Formating code is important for readability and maintainability. Here are some g
 - DO NOT USE regions to group related functions within a class.
 - DO NOT USE Minimal APIs! Use Controllers instead.
 - Use the latest features of C# to write clean and concise code.
+
+
+# Records
+- Use records for data transfer objects (DTOs) and other simple data structures that do not require behavior.
+- Records provide built-in immutability and value-based equality, making them ideal for these use cases.
+- Avoid using records for complex objects that require behavior or mutable state. In such cases, consider using classes instead, as they provide more flexibility for defining methods and properties.
+- When defining records use the standard class-like syntax when you need to include methods or additional properties. This helps to keep the code clean and easy to read.
+
+
+# Classes
+- Primary constroctors should be used for classes that as a body have logic only for the  initialization of properties. This increases the readability.
