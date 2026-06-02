@@ -45,6 +45,17 @@ As an administrator, I want to manage applications in the system. The feature pr
 - **When** a request is made
 - **Then** a `400 Bad Request` response is returned with RFC 7807 Problem Details
 
+### AC6: Delete Application
+- **Given** an existing application
+- **When** an administrator sends a `DELETE /applications/{id}`
+- **Then** the application is deleted and a `204 No Content` response is returned
+- **When** the application does not exist → `404 Not Found`
+
+### AC7: Input Validation
+- **Given** invalid input (empty name, name > 256 chars, comments > 1024 chars)
+- **When** a request is made
+- **Then** a `400 Bad Request` response is returned with RFC 7807 Problem Details
+
 ---
 
 ## Test Strategy
@@ -53,7 +64,7 @@ As an administrator, I want to manage applications in the system. The feature pr
 |-------|-----------|-------------|
 | Domain | Unit (xUnit + Shouldly) | `Application` entity constructor validation, `Update()` method |
 | Application | Unit (xUnit + Shouldly) | Command/query handlers (mocked repository), FluentValidation validators |
-| API | Integration (xUnit + WebApplicationFactory) | Controller endpoints with in-memory EF Core |
+| API | Integration (xUnit + WebApplicationFactory) | All 5 controller endpoints with in-memory EF Core |
 | Infrastructure | Integration (Testcontainers) | Repository against real PostgreSQL |
 
 **Coverage Target**: All handlers, validators, domain entity methods, and controller actions.
@@ -73,6 +84,7 @@ As an administrator, I want to manage applications in the system. The feature pr
 |------|--------|---------|
 | `Features/ApplicationManagement/Commands/CreateApplicationHandler.cs` | CREATE | `CreateApplication` command + handler |
 | `Features/ApplicationManagement/Commands/UpdateApplicationHandler.cs` | CREATE | `UpdateApplication` command + handler |
+| `Features/ApplicationManagement/Commands/DeleteApplicationHandler.cs` | CREATE | `DeleteApplication` command + handler |
 | `Features/ApplicationManagement/Queries/GetApplicationByIdHandler.cs` | CREATE | `GetApplicationById` query + handler |
 | `Features/ApplicationManagement/Queries/GetApplicationsHandler.cs` | CREATE | `GetApplications` query + handler |
 | `Features/ApplicationManagement/DTOs/ApplicationDto.cs` | CREATE | Read-model DTO (record) |
@@ -96,7 +108,7 @@ As an administrator, I want to manage applications in the system. The feature pr
 ### API Layer (`src/Ai.Api/`)
 | File | Action | Purpose |
 |------|--------|---------|
-| `Controllers/ApplicationsController.cs` | CREATE | CRUD controller: POST, PUT, GET/{id}, GET |
+| `Controllers/ApplicationsController.cs` | CREATE | CRUD controller: POST, PUT, GET/{id}, GET, DELETE |
 | `Models/Requests/CreateApplicationRequest.cs` | CREATE | POST request model (record) |
 | `Models/Requests/UpdateApplicationRequest.cs` | CREATE | PUT request model (record) |
 | `Models/Responses/ApplicationResponse.cs` | CREATE | Response model (record) |
@@ -167,6 +179,10 @@ Commands and queries follow WolverineFx conventions — the command/query record
   - Record: `UpdateApplication(Guid Id, string Name, string? Comments)`
   - Handler: Fetches existing entity → 404 if missing → checks uniqueness → calls `entity.Update()` → persists → maps & returns `ApplicationDto`
 
+- **DeleteApplication** (`DeleteApplicationHandler.cs`):
+  - Record: `DeleteApplication(Guid Id)`
+  - Handler: Fetches existing entity → 404 if missing → calls `repository.DeleteAsync()` → returns void
+
 - **GetApplicationById** (`GetApplicationByIdHandler.cs`):
   - Record: `GetApplicationById(Guid Id)`
   - Handler: Retrieves from repository → returns `ApplicationDto` or null
@@ -184,6 +200,7 @@ public interface IApplicationRepository
     Task<IReadOnlyList<ApplicationDto>> GetAllAsync(CancellationToken ct = default);
     Task<ApplicationDto> AddAsync(Domain.Entities.Application application, CancellationToken ct = default);
     Task<ApplicationDto> UpdateAsync(Domain.Entities.Application application, CancellationToken ct = default);
+    Task DeleteAsync(Guid id, CancellationToken ct = default);
     Task<bool> ExistsByNameAsync(string name, Guid? excludeId = null, CancellationToken ct = default);
 }
 ```
@@ -205,6 +222,7 @@ public class ApplicationsController : ControllerBase
 {
     // POST   /applications      → 201 Created (or 409 Conflict)
     // PUT    /applications/{id} → 200 OK (or 404 Not Found / 409 Conflict)
+    // DELETE /applications/{id} → 204 No Content (or 404 Not Found)
     // GET    /applications/{id} → 200 OK (or 404 Not Found)
     // GET    /applications      → 200 OK
 }
@@ -221,6 +239,7 @@ Controller uses `IMessageBus` from Wolverine to dispatch commands/queries. Maps 
   builder.HasIndex(e => e.Name).IsUnique();
   ```
 - Name max length 256 at column level: `builder.Property(e => e.Name).HasMaxLength(256);`
+- Comments max length 1024 at column level: `builder.Property(e => e.Comments).HasMaxLength(1024);`
 
 ### 8. Central Package Management
 
@@ -259,23 +278,26 @@ Tech-stack rules require Central Package Management. Since `Directory.Packages.p
 | A1 | PostgreSQL is the database | Architecture rules and security rules reference PostgreSQL/Npgsql; `about.md` describes a configuration service backed by PostgreSQL |
 | A2 | EF Core Code-First with migrations | Architecture rules specify EF Core; `Migrations/` folder already exists in Infrastructure |
 | A3 | WolverineFx is the CQRS mediator | Architecture rules explicitly mandate WolverineFx for commands/queries with FluentValidation middleware |
-| A4 | No authentication yet | The story mentions "administrator" but no auth infrastructure exists; security rules require `[Authorize]` but adding it now would block all endpoints — deferred to a future auth work item |
+| A4 | No authentication yet | Deferred per user decision — auth infrastructure doesn't exist yet; will be added in a future work item |
 | A5 | Name uniqueness enforced at DB + app layer | AC5 specifies uniqueness; enforced with DB unique index AND application-layer existence check |
-| A6 | "associated with related configuration IDs" is future scope | The current model (id, name, comments) has no configuration relation field; likely a later feature |
+| A6 | "associated with related configuration IDs" is future scope | Deferred per user decision — the current model has no configuration relation field |
 | A7 | RFC 7807 Problem Details for errors | Security rules mandate it; .NET 10 has built-in `AddProblemDetails()` |
 | A8 | Central Package Management required | Tech-stack rules require it but no `Directory.Packages.props` exists; created as part of this feature |
 | A9 | Separate persistence entity in Infrastructure | Architecture guide states persistence entities "Must never leak outside Infrastructure"; separate `ApplicationEntity` class |
-| A10 | No DELETE endpoint | Work item only specifies POST, PUT, GET/{id}, GET; DELETE not listed |
-| A11 | No pagination on GET /applications | Work item doesn't mention pagination; return all applications for now per KISS/YAGNI |
+| A10 | DELETE endpoint included | Per user decision — full CRUD with `DELETE /applications/{id}` returning 204 No Content |
+| A11 | No pagination on GET /applications | Per user decision — return all applications per KISS/YAGNI |
+| A12 | Connection string in appsettings.Development.json | Per user decision — local dev connection string placed in Development settings file |
 
 ---
 
 ## Questions Requiring Clarification
 
-| # | Question |
-|---|----------|
-| Q1 | Should authentication be added now or deferred? The story says "As an administrator" but no auth infrastructure exists yet. Security rules require `[Authorize]` on non-public endpoints. |
-| Q2 | The AC mentions "associated with related configuration IDs" but the model only has id/name/comments. Should this relationship be added now or is it out of scope? |
-| Q3 | Should we add a `DELETE /applications/{id}` endpoint? The work item doesn't list it, but full CRUD is typical for management features. |
-| Q4 | What PostgreSQL connection string should be used for local development? Should we use User Secrets or just `appsettings.Development.json`? |
-| Q5 | Should the `GET /applications` endpoint support pagination/filtering, or return all applications? |
+All questions resolved:
+
+| # | Question | Resolution |
+|---|----------|------------|
+| Q1 | Authentication now or deferred? | **Deferred** — add in future auth work item |
+| Q2 | Configuration IDs relationship? | **Out of scope** — defer to future feature |
+| Q3 | DELETE endpoint? | **Added** — `DELETE /applications/{id}` → 204 No Content |
+| Q4 | Connection string location? | **appsettings.Development.json** |
+| Q5 | Pagination on GET /applications? | **No pagination** — return all applications |
