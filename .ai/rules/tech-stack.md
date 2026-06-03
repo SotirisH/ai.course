@@ -34,5 +34,8 @@ The chosen tech stack is designed to ensure scalability, maintainability, and ef
 - ASP.NET Core Web API: A framework for building RESTful APIs using .NET.
 - Native OpenAPI + Scalar (Recommended Modern Alternative): A modern approach to API design and documentation, providing a more efficient and flexible way to define and consume APIs.
 
+## Database
+- PostgreSQL is the default database provider. Use `Npgsql.EntityFrameworkCore.PostgreSQL` for EF Core integration. Only use a different provider if explicitly specified in the story requirements.
+
 ## Testing
 - Shouldly: A popular validation library for .NET that provides a fluent API for defining validation rules.
