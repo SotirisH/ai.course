@@ -44,6 +44,12 @@ As an administrator, I want to manage applications in the system. The feature ex
 - **When** a request is made
 - **Then** a `400 Bad Request` is returned with RFC 7807 Problem Details
 
+### AC6: Delete Application
+- **Given** an existing application with `id`
+- **When** an administrator sends a `DELETE /applications/{id}`
+- **Then** the application is deleted and a `204 No Content` is returned
+- **When** the application does not exist → `404 Not Found`
+
 ---
 
 ## Test Strategy
@@ -52,7 +58,7 @@ As an administrator, I want to manage applications in the system. The feature ex
 |-------|-----------|-------------|
 | Domain | Unit (xUnit + Shouldly) | `Application` entity constructor validation, `Update()` method, `DomainException` |
 | Application | Unit (xUnit + Shouldly) | Command/query handlers with mocked `IApplicationRepository`, FluentValidation validators |
-| API | Integration (xUnit + WebApplicationFactory) | All 4 controller endpoints against in-memory EF Core |
+| API | Integration (xUnit + WebApplicationFactory) | All 5 controller endpoints against in-memory EF Core |
 | Infrastructure | Integration (Testcontainers PostgreSQL) | `ApplicationRepository` against real PostgreSQL |
 
 **Coverage Target**: All handlers, validators, domain entity methods, and controller actions.
@@ -64,7 +70,7 @@ As an administrator, I want to manage applications in the system. The feature ex
 ### Domain Layer (`src/Ai.Api.Domain/`)
 | File | Action | Purpose |
 |------|--------|---------|
-| `Entities/Application.cs` | MODIFY | Review existing entity — add parameterless-constructor validation, ensure alignment with architecture rules |
+| `Entities/Application.cs` | NO CHANGE | Already exists; Q4 resolved to leave second constructor as-is |
 | `Exceptions/DomainException.cs` | NO CHANGE | Already exists and suffices |
 
 ### Application Layer (`src/Ai.Api.Application/`)
@@ -72,10 +78,11 @@ As an administrator, I want to manage applications in the system. The feature ex
 |------|--------|---------|
 | `Features/ApplicationManagement/Commands/CreateApplicationHandler.cs` | CREATE | `CreateApplication` command record + handler |
 | `Features/ApplicationManagement/Commands/UpdateApplicationHandler.cs` | CREATE | `UpdateApplication` command record + handler |
+| `Features/ApplicationManagement/Commands/DeleteApplicationHandler.cs` | CREATE | `DeleteApplication` command record + handler |
 | `Features/ApplicationManagement/Queries/GetApplicationByIdHandler.cs` | CREATE | `GetApplicationById` query record + handler |
 | `Features/ApplicationManagement/Queries/GetApplicationsHandler.cs` | CREATE | `GetApplications` query record + handler |
 | `Features/ApplicationManagement/DTOs/ApplicationDto.cs` | CREATE | Read-model DTO (record) |
-| `Interfaces/Repositories/IApplicationRepository.cs` | CREATE | Repository contract |
+| `Interfaces/Repositories/IApplicationRepository.cs` | CREATE | Repository contract (includes DeleteAsync) |
 | `Mappings/ApplicationMappingExtensions.cs` | CREATE | Domain ↔ DTO mapping extension methods |
 | `Validators/CreateApplicationValidator.cs` | CREATE | FluentValidation: name required, max 256, comments max 1024 |
 | `Validators/UpdateApplicationValidator.cs` | CREATE | FluentValidation: id not empty, name required, max 256, comments max 1024 |
@@ -95,7 +102,7 @@ As an administrator, I want to manage applications in the system. The feature ex
 ### API Layer (`src/Ai.Api/`)
 | File | Action | Purpose |
 |------|--------|---------|
-| `Controllers/ApplicationsController.cs` | CREATE | CRUD controller: POST, PUT, GET/{id}, GET |
+| `Controllers/ApplicationsController.cs` | CREATE | CRUD controller: POST, PUT, DELETE, GET/{id}, GET |
 | `Models/Requests/CreateApplicationRequest.cs` | CREATE | POST request body model (record) |
 | `Models/Requests/UpdateApplicationRequest.cs` | CREATE | PUT request body model (record) |
 | `Models/Responses/ApplicationResponse.cs` | CREATE | Response model (record) |
@@ -111,7 +118,7 @@ As an administrator, I want to manage applications in the system. The feature ex
 
 ## Implementation Details
 
-### 1. Domain Entity (EXISTING — review/modify)
+### 1. Domain Entity (EXISTING — NO CHANGE)
 
 The `Application` entity at `src/Ai.Api.Domain/Entities/Application.cs` currently exists with:
 - `Guid Id` initialized via `Guid.CreateVersion7()`
@@ -121,9 +128,7 @@ The `Application` entity at `src/Ai.Api.Domain/Entities/Application.cs` currentl
 - Two public constructors: `(string name, string? comments)` and `(Guid id, string name, string? comments)`
 - `Update(string name, string? comments)` method
 
-**Review items**:
-- The second constructor `(Guid id, string name, string? comments)` bypasses `Validate()`. Per architecture guidance, constructors that accept an `id` (for reconstitution from persistence) should still validate. Fix: add validation call to this constructor.
-- The work item says "associated with related configuration IDs" — no such field exists. See Q1.
+**No changes needed.** Q4 resolved: the second constructor `(Guid id, string name, string? comments)` is used for reconstitution from persistence and should remain as-is.
 
 ### 2. Persistence Entity (Infrastructure)
 
@@ -161,6 +166,10 @@ public class ApplicationConfiguration : IEntityTypeConfiguration<ApplicationEnti
 - Command: `record UpdateApplication(Guid Id, string Name, string? Comments);`
 - Handler flow: fetches existing via `GetByIdAsync()` → 404 if null → checks name uniqueness (excluding self) → calls `entity.Update()` → persists → maps to `ApplicationDto`
 
+**DeleteApplication** (`DeleteApplicationHandler.cs`):
+- Command: `record DeleteApplication(Guid Id);`
+- Handler flow: fetches existing via `GetByIdAsync()` → 404 if null → deletes via `IApplicationRepository.DeleteAsync()` → returns nothing
+
 **GetApplicationById** (`GetApplicationByIdHandler.cs`):
 - Query: `record GetApplicationById(Guid Id);`
 - Handler flow: retrieves from repository → returns `ApplicationDto` or null
@@ -178,6 +187,7 @@ public interface IApplicationRepository
     Task<IReadOnlyList<ApplicationDto>> GetAllAsync(CancellationToken ct = default);
     Task<ApplicationDto> AddAsync(Domain.Entities.Application application, CancellationToken ct = default);
     Task<ApplicationDto> UpdateAsync(Domain.Entities.Application application, CancellationToken ct = default);
+    Task DeleteAsync(Guid id, CancellationToken ct = default);
     Task<bool> ExistsByNameAsync(string name, Guid? excludeId = null, CancellationToken ct = default);
 }
 ```
@@ -199,6 +209,7 @@ public class ApplicationsController(IMessageBus bus) : ControllerBase
 {
     // POST   /applications      → 201 Created (or 409 Conflict)
     // PUT    /applications/{id} → 200 OK (or 404 / 409)
+    // DELETE /applications/{id} → 204 No Content (or 404)
     // GET    /applications/{id} → 200 OK (or 404)
     // GET    /applications      → 200 OK
 }
@@ -240,23 +251,23 @@ Verify these are latest stable before implementing.
 | Step | Layer | Tasks |
 |------|-------|-------|
 | 1 | Root | Verify `Directory.Packages.props` versions are current |
-| 2 | Domain | Review & fix `Application.cs` entity (add validation to second constructor) |
+| 2 | Domain | SKIP — `Application.cs` entity is complete; no changes needed per Q4 |
 | 3 | Application | Add package references to `.csproj` |
 | 4 | Application | Create `ApplicationDto`, `IApplicationRepository`, mapping extensions |
 | 5 | Application | Create validators: `CreateApplicationValidator`, `UpdateApplicationValidator` |
-| 6 | Application | Create commands & handlers: `CreateApplicationHandler`, `UpdateApplicationHandler` |
+| 6 | Application | Create commands & handlers: `CreateApplicationHandler`, `UpdateApplicationHandler`, `DeleteApplicationHandler` |
 | 7 | Application | Create queries & handlers: `GetApplicationByIdHandler`, `GetApplicationsHandler` |
 | 8 | Application | Create `DependencyInjection.cs` |
 | 9 | Infrastructure | Add package references to `.csproj` |
 | 10 | Infrastructure | Create `ApplicationEntity`, `ApplicationConfiguration`, `AppDbContext` |
-| 11 | Infrastructure | Implement `ApplicationRepository` |
+| 11 | Infrastructure | Implement `ApplicationRepository` (includes `DeleteAsync`) |
 | 12 | Infrastructure | Create `DependencyInjection.cs` |
 | 13 | Infrastructure | Generate initial EF Core migration |
 | 14 | API | Create request/response models |
-| 15 | API | Create `ApplicationsController` |
+| 15 | API | Create `ApplicationsController` (POST, PUT, DELETE, GET/{id}, GET) |
 | 16 | API | Update `Program.cs` — register all services |
 | 17 | API | Add `Microsoft.AspNetCore.OpenApi` package reference |
-| 18 | Verify | Build solution, run migration, test all endpoints |
+| 18 | Verify | Build solution, run migration, test all 5 endpoints |
 
 ---
 
@@ -275,16 +286,16 @@ Verify these are latest stable before implementing.
 | A9 | Separate persistence entity in Infrastructure | Architecture guide: persistence entities "Must never leak outside Infrastructure" |
 | A10 | No pagination on GET /applications | Not specified in acceptance criteria; KISS/YAGNI |
 | A11 | Connection string in `appsettings.Development.json` is sufficient | Already configured; production uses env vars/user secrets |
-| A12 | DELETE endpoint excluded | Not listed in the work item's endpoints; deferring to explicit requirements |
+| A12 | DELETE endpoint included per Q2 resolution | User explicitly requested DELETE be added to scope |
 | A13 | `IMessageBus` for controller dispatch | Wolverine mediator pattern per architecture CQRS guidance |
 
 ---
 
 ## Questions Requiring Clarification
 
-| # | Question | Context |
-|---|----------|---------|
-| Q1 | **"associated with related configuration IDs"** — The acceptance criteria mention this but the model only has `id`, `name`, `comments`. Add a `ConfigurationIds` field now or defer? | Criteria vs model mismatch |
-| Q2 | **DELETE endpoint** — Work item lists only POST, PUT, GET/{id}, GET. Is `DELETE /applications/{id}` needed? | Scope |
-| Q3 | **Pagination / filtering** — The `GET /applications` returns all. Is pagination/sorting/filtering needed now or deferred? | Performance |
-| Q4 | **Domain entity second constructor** — `Application(Guid id, string name, string? comments)` bypasses `Validate()`. Remove or add validation? | Architectural consistency |
+| # | Question | Context | Resolution |
+|---|----------|---------|------------|
+| Q1 | **"associated with related configuration IDs"** — add now or defer? | Criteria vs model mismatch | **DEFERRED** |
+| Q2 | **DELETE endpoint** — needed? | Scope | **INCLUDED** — add `DELETE /applications/{id}` |
+| Q3 | **Pagination / filtering** on GET /applications? | Performance | **SIMPLE LIST** — no pagination |
+| Q4 | **Domain entity second constructor** bypasses validation? | Architectural consistency | **LEAVE AS-IS** — no change to existing constructor
