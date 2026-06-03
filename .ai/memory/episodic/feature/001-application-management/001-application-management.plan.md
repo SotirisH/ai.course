@@ -9,7 +9,7 @@
 
 ## Story Summary
 
-As an administrator, I want to manage applications in the system. The feature provides CRUD operations (Create, Update, Read, List) for applications. Each application has a globally unique name and optional comments.
+As an administrator, I want to manage applications in the system. The feature exposes RESTful CRUD endpoints for creating, updating, retrieving, and listing applications. Each application has a unique `name` (max 256 chars) and optional `comments` (max 1024 chars), identified by a GUID primary key.
 
 ---
 
@@ -19,42 +19,30 @@ As an administrator, I want to manage applications in the system. The feature pr
 - **Given** an administrator with valid application data (`name`, optional `comments`)
 - **When** they send a `POST /applications` request
 - **Then** a new application is created, persisted, and a `201 Created` response is returned with the application details
-- **When** the name already exists
-- **Then** a `409 Conflict` response is returned
+- **When** the `name` already exists → `409 Conflict`
 
 ### AC2: Update Application
-- **Given** an existing application
-- **When** an administrator sends a `PUT /applications/{id}` with updated `name` and `comments`
-- **Then** the application is updated and a `200 OK` response is returned with updated details
+- **Given** an existing application with `id`
+- **When** an administrator sends a `PUT /applications/{id}` with updated `name` and/or `comments`
+- **Then** the application is updated and a `200 OK` is returned with the updated details
 - **When** the application does not exist → `404 Not Found`
-- **When** the new name conflicts with another application → `409 Conflict`
+- **When** the new `name` conflicts with another application → `409 Conflict`
 
 ### AC3: Get Application by ID
-- **Given** an existing application
+- **Given** an existing application with `id`
 - **When** a user sends a `GET /applications/{id}`
-- **Then** a `200 OK` response is returned with the application details
+- **Then** a `200 OK` is returned with the application details
 - **When** the application does not exist → `404 Not Found`
 
 ### AC4: List All Applications
 - **Given** applications exist in the system
 - **When** a user sends a `GET /applications`
-- **Then** a `200 OK` response is returned with a list of all applications
+- **Then** a `200 OK` is returned with a list of all applications
 
 ### AC5: Input Validation
 - **Given** invalid input (empty name, name > 256 chars, comments > 1024 chars)
 - **When** a request is made
-- **Then** a `400 Bad Request` response is returned with RFC 7807 Problem Details
-
-### AC6: Delete Application
-- **Given** an existing application
-- **When** an administrator sends a `DELETE /applications/{id}`
-- **Then** the application is deleted and a `204 No Content` response is returned
-- **When** the application does not exist → `404 Not Found`
-
-### AC7: Input Validation
-- **Given** invalid input (empty name, name > 256 chars, comments > 1024 chars)
-- **When** a request is made
-- **Then** a `400 Bad Request` response is returned with RFC 7807 Problem Details
+- **Then** a `400 Bad Request` is returned with RFC 7807 Problem Details
 
 ---
 
@@ -62,10 +50,10 @@ As an administrator, I want to manage applications in the system. The feature pr
 
 | Layer | Test Type | What to Test |
 |-------|-----------|-------------|
-| Domain | Unit (xUnit + Shouldly) | `Application` entity constructor validation, `Update()` method |
-| Application | Unit (xUnit + Shouldly) | Command/query handlers (mocked repository), FluentValidation validators |
-| API | Integration (xUnit + WebApplicationFactory) | All 5 controller endpoints with in-memory EF Core |
-| Infrastructure | Integration (Testcontainers) | Repository against real PostgreSQL |
+| Domain | Unit (xUnit + Shouldly) | `Application` entity constructor validation, `Update()` method, `DomainException` |
+| Application | Unit (xUnit + Shouldly) | Command/query handlers with mocked `IApplicationRepository`, FluentValidation validators |
+| API | Integration (xUnit + WebApplicationFactory) | All 4 controller endpoints against in-memory EF Core |
+| Infrastructure | Integration (Testcontainers PostgreSQL) | `ApplicationRepository` against real PostgreSQL |
 
 **Coverage Target**: All handlers, validators, domain entity methods, and controller actions.
 
@@ -76,122 +64,112 @@ As an administrator, I want to manage applications in the system. The feature pr
 ### Domain Layer (`src/Ai.Api.Domain/`)
 | File | Action | Purpose |
 |------|--------|---------|
-| `Entities/Application.cs` | CREATE | Domain entity: Id, Name, Comments with validation |
-| `Exceptions/DomainException.cs` | CREATE | Base domain exception for business rule violations |
+| `Entities/Application.cs` | MODIFY | Review existing entity — add parameterless-constructor validation, ensure alignment with architecture rules |
+| `Exceptions/DomainException.cs` | NO CHANGE | Already exists and suffices |
 
 ### Application Layer (`src/Ai.Api.Application/`)
 | File | Action | Purpose |
 |------|--------|---------|
-| `Features/ApplicationManagement/Commands/CreateApplicationHandler.cs` | CREATE | `CreateApplication` command + handler |
-| `Features/ApplicationManagement/Commands/UpdateApplicationHandler.cs` | CREATE | `UpdateApplication` command + handler |
-| `Features/ApplicationManagement/Commands/DeleteApplicationHandler.cs` | CREATE | `DeleteApplication` command + handler |
-| `Features/ApplicationManagement/Queries/GetApplicationByIdHandler.cs` | CREATE | `GetApplicationById` query + handler |
-| `Features/ApplicationManagement/Queries/GetApplicationsHandler.cs` | CREATE | `GetApplications` query + handler |
+| `Features/ApplicationManagement/Commands/CreateApplicationHandler.cs` | CREATE | `CreateApplication` command record + handler |
+| `Features/ApplicationManagement/Commands/UpdateApplicationHandler.cs` | CREATE | `UpdateApplication` command record + handler |
+| `Features/ApplicationManagement/Queries/GetApplicationByIdHandler.cs` | CREATE | `GetApplicationById` query record + handler |
+| `Features/ApplicationManagement/Queries/GetApplicationsHandler.cs` | CREATE | `GetApplications` query record + handler |
 | `Features/ApplicationManagement/DTOs/ApplicationDto.cs` | CREATE | Read-model DTO (record) |
 | `Interfaces/Repositories/IApplicationRepository.cs` | CREATE | Repository contract |
-| `Mappings/ApplicationMappingExtensions.cs` | CREATE | Domain ↔ DTO mapping extensions |
+| `Mappings/ApplicationMappingExtensions.cs` | CREATE | Domain ↔ DTO mapping extension methods |
 | `Validators/CreateApplicationValidator.cs` | CREATE | FluentValidation: name required, max 256, comments max 1024 |
 | `Validators/UpdateApplicationValidator.cs` | CREATE | FluentValidation: id not empty, name required, max 256, comments max 1024 |
-| `DependencyInjection.cs` | CREATE | `AddApplication()` extension method (registers Wolverine, validators) |
-| `Ai.Api.Application.csproj` | MODIFY | Add WolverineFx, WolverineFx.FluentValidation, FluentValidation packages |
+| `DependencyInjection.cs` | CREATE | `AddApplication()` extension — registers Wolverine with FluentValidation middleware |
+| `Ai.Api.Application.csproj` | MODIFY | Add NuGet package references for WolverineFx, WolverineFx.FluentValidation, WolverineFx.RuntimeCompilation, FluentValidation |
 
 ### Infrastructure Layer (`src/Ai.Api.Infrastructure/`)
 | File | Action | Purpose |
 |------|--------|---------|
 | `Persistence/Context/AppDbContext.cs` | CREATE | EF Core DbContext with `Applications` DbSet |
-| `Persistence/Configurations/ApplicationConfiguration.cs` | CREATE | `IEntityTypeConfiguration<ApplicationEntity>` — unique index on Name |
-| `Persistence/Entities/ApplicationEntity.cs` | CREATE | Persistence entity (EF Core entity) |
-| `Persistence/Repositories/ApplicationRepository.cs` | CREATE | `IApplicationRepository` implementation |
-| `DependencyInjection.cs` | CREATE | `AddInfrastructure(connectionString)` extension method |
-| `Ai.Api.Infrastructure.csproj` | MODIFY | Add Npgsql.EntityFrameworkCore.PostgreSQL, EF Core Design packages |
+| `Persistence/Configurations/ApplicationConfiguration.cs` | CREATE | `IEntityTypeConfiguration<ApplicationEntity>` — unique index on Name, column max lengths |
+| `Persistence/Entities/ApplicationEntity.cs` | CREATE | Persistence entity (separate from domain entity per architecture rules) |
+| `Persistence/Repositories/ApplicationRepository.cs` | CREATE | `IApplicationRepository` implementation with domain↔persistence mapping |
+| `DependencyInjection.cs` | CREATE | `AddInfrastructure(connectionString)` extension — registers DbContext and repositories |
+| `Ai.Api.Infrastructure.csproj` | MODIFY | Ensure EF Core / Npgsql package references present |
 
 ### API Layer (`src/Ai.Api/`)
 | File | Action | Purpose |
 |------|--------|---------|
-| `Controllers/ApplicationsController.cs` | CREATE | CRUD controller: POST, PUT, GET/{id}, GET, DELETE |
-| `Models/Requests/CreateApplicationRequest.cs` | CREATE | POST request model (record) |
-| `Models/Requests/UpdateApplicationRequest.cs` | CREATE | PUT request model (record) |
+| `Controllers/ApplicationsController.cs` | CREATE | CRUD controller: POST, PUT, GET/{id}, GET |
+| `Models/Requests/CreateApplicationRequest.cs` | CREATE | POST request body model (record) |
+| `Models/Requests/UpdateApplicationRequest.cs` | CREATE | PUT request body model (record) |
 | `Models/Responses/ApplicationResponse.cs` | CREATE | Response model (record) |
-| `Program.cs` | MODIFY | Register DbContext, Wolverine, Infrastructure & Application services, ProblemDetails |
-| `appsettings.json` | MODIFY | Add `ConnectionStrings.Default` placeholder |
-| `appsettings.Development.json` | MODIFY | Add `ConnectionStrings.Default` with local PostgreSQL connection string |
+| `Program.cs` | MODIFY | Register `AddApplication()`, `AddInfrastructure()`, `AddProblemDetails()`, Wolverine service-location for DbContext |
+| `Ai.Api.csproj` | MODIFY | Add `Microsoft.AspNetCore.OpenApi` package reference |
 
 ### Root
 | File | Action | Purpose |
 |------|--------|---------|
-| `Directory.Packages.props` | CREATE | Central Package Management — all NuGet version definitions |
+| `Directory.Packages.props` | REVIEW | Already exists with needed versions; verify versions are current and complete |
 
 ---
 
 ## Implementation Details
 
-### 1. Domain Entity
+### 1. Domain Entity (EXISTING — review/modify)
+
+The `Application` entity at `src/Ai.Api.Domain/Entities/Application.cs` currently exists with:
+- `Guid Id` initialized via `Guid.CreateVersion7()`
+- `string Name` with validation in constructor and `Update()`
+- `string? Comments`
+- Private parameterless constructor for EF Core
+- Two public constructors: `(string name, string? comments)` and `(Guid id, string name, string? comments)`
+- `Update(string name, string? comments)` method
+
+**Review items**:
+- The second constructor `(Guid id, string name, string? comments)` bypasses `Validate()`. Per architecture guidance, constructors that accept an `id` (for reconstitution from persistence) should still validate. Fix: add validation call to this constructor.
+- The work item says "associated with related configuration IDs" — no such field exists. See Q1.
+
+### 2. Persistence Entity (Infrastructure)
 
 ```csharp
-// src/Ai.Api.Domain/Entities/Application.cs
-public class Application
+public class ApplicationEntity
 {
-    public Guid Id { get; private set; } = Guid.CreateVersion7();
-    public string Name { get; private set; } = null!;
-    public string? Comments { get; private set; }
+    public Guid Id { get; set; }
+    public string Name { get; set; } = null!;
+    public string? Comments { get; set; }
+}
+```
 
-    private Application() { } // EF Core
+### 3. EF Core Configuration
 
-    public Application(string name, string? comments = null)
+```csharp
+public class ApplicationConfiguration : IEntityTypeConfiguration<ApplicationEntity>
+{
+    public void Configure(EntityTypeBuilder<ApplicationEntity> builder)
     {
-        Validate(name, comments);
-        Name = name;
-        Comments = comments;
-    }
-
-    public void Update(string name, string? comments)
-    {
-        Validate(name, comments);
-        Name = name;
-        Comments = comments;
-    }
-
-    private static void Validate(string name, string? comments)
-    {
-        if (string.IsNullOrWhiteSpace(name))
-            throw new DomainException("Application name is required.");
-        if (name.Length > 256)
-            throw new DomainException("Application name must not exceed 256 characters.");
-        if (comments?.Length > 1024)
-            throw new DomainException("Comments must not exceed 1024 characters.");
+        builder.HasKey(e => e.Id);
+        builder.Property(e => e.Name).IsRequired().HasMaxLength(256);
+        builder.Property(e => e.Comments).HasMaxLength(1024);
+        builder.HasIndex(e => e.Name).IsUnique();
     }
 }
 ```
 
-### 2. Persistence Entity (Infrastructure)
+### 4. CQRS with WolverineFx
 
-A separate persistence entity (`ApplicationEntity`) lives in Infrastructure to avoid leaking EF Core concerns into Domain. This follows the architecture guide which states persistence entities "Must never leak outside Infrastructure."
+**CreateApplication** (`CreateApplicationHandler.cs`):
+- Command: `record CreateApplication(string Name, string? Comments);`
+- Handler flow: validated by FluentValidation middleware → checks name uniqueness via `IApplicationRepository.ExistsByNameAsync()` → creates domain entity → persists → maps to `ApplicationDto`
 
-### 3. CQRS with WolverineFx
+**UpdateApplication** (`UpdateApplicationHandler.cs`):
+- Command: `record UpdateApplication(Guid Id, string Name, string? Comments);`
+- Handler flow: fetches existing via `GetByIdAsync()` → 404 if null → checks name uniqueness (excluding self) → calls `entity.Update()` → persists → maps to `ApplicationDto`
 
-Commands and queries follow WolverineFx conventions — the command/query record lives in the same file as its handler.
+**GetApplicationById** (`GetApplicationByIdHandler.cs`):
+- Query: `record GetApplicationById(Guid Id);`
+- Handler flow: retrieves from repository → returns `ApplicationDto` or null
 
-- **CreateApplication** (`CreateApplicationHandler.cs`):
-  - Record: `CreateApplication(string Name, string? Comments)`
-  - Handler: Validated by FluentValidation middleware → checks uniqueness via repository → creates domain entity → persists → maps & returns `ApplicationDto`
+**GetApplications** (`GetApplicationsHandler.cs`):
+- Query: `record GetApplications();`
+- Handler flow: retrieves all → returns `IReadOnlyList<ApplicationDto>`
 
-- **UpdateApplication** (`UpdateApplicationHandler.cs`):
-  - Record: `UpdateApplication(Guid Id, string Name, string? Comments)`
-  - Handler: Fetches existing entity → 404 if missing → checks uniqueness → calls `entity.Update()` → persists → maps & returns `ApplicationDto`
-
-- **DeleteApplication** (`DeleteApplicationHandler.cs`):
-  - Record: `DeleteApplication(Guid Id)`
-  - Handler: Fetches existing entity → 404 if missing → calls `repository.DeleteAsync()` → returns void
-
-- **GetApplicationById** (`GetApplicationByIdHandler.cs`):
-  - Record: `GetApplicationById(Guid Id)`
-  - Handler: Retrieves from repository → returns `ApplicationDto` or null
-
-- **GetApplications** (`GetApplicationsHandler.cs`):
-  - Record: `GetApplications()`
-  - Handler: Retrieves all → returns `IReadOnlyList<ApplicationDto>`
-
-### 4. Repository Interface
+### 5. Repository Interface
 
 ```csharp
 public interface IApplicationRepository
@@ -200,56 +178,60 @@ public interface IApplicationRepository
     Task<IReadOnlyList<ApplicationDto>> GetAllAsync(CancellationToken ct = default);
     Task<ApplicationDto> AddAsync(Domain.Entities.Application application, CancellationToken ct = default);
     Task<ApplicationDto> UpdateAsync(Domain.Entities.Application application, CancellationToken ct = default);
-    Task DeleteAsync(Guid id, CancellationToken ct = default);
     Task<bool> ExistsByNameAsync(string name, Guid? excludeId = null, CancellationToken ct = default);
 }
 ```
 
-The repository returns `ApplicationDto` to keep persistence concerns internal. The infrastructure implementation maps between `ApplicationEntity` and `Domain.Entities.Application`.
+Repository returns `ApplicationDto` to prevent persistence entities from leaking. Internal mapping between `ApplicationEntity` ↔ `Domain.Entities.Application` stays in Infrastructure.
 
-### 5. Validation (FluentValidation + Wolverine Middleware)
+### 6. Validation (FluentValidation + Wolverine Middleware)
 
-- `CreateApplicationValidator`: Name required, max length 256; Comments max length 1024
-- `UpdateApplicationValidator`: Id not empty; Name required, max length 256; Comments max length 1024
-- Wolverine's `.UseFluentValidation()` middleware auto-discovers and applies validators on the handler pipeline.
+- `CreateApplicationValidator`: Name not empty, max length 256; Comments max length 1024
+- `UpdateApplicationValidator`: Id not empty; Name not empty, max length 256; Comments max length 1024
+- Wolverine's `.UseFluentValidation()` auto-discovers and applies validators on the handler pipeline
 
-### 6. API Controller
+### 7. API Controller
 
 ```csharp
 [ApiController]
 [Route("applications")]
-public class ApplicationsController : ControllerBase
+public class ApplicationsController(IMessageBus bus) : ControllerBase
 {
     // POST   /applications      → 201 Created (or 409 Conflict)
-    // PUT    /applications/{id} → 200 OK (or 404 Not Found / 409 Conflict)
-    // DELETE /applications/{id} → 204 No Content (or 404 Not Found)
-    // GET    /applications/{id} → 200 OK (or 404 Not Found)
+    // PUT    /applications/{id} → 200 OK (or 404 / 409)
+    // GET    /applications/{id} → 200 OK (or 404)
     // GET    /applications      → 200 OK
 }
 ```
 
-Controller uses `IMessageBus` from Wolverine to dispatch commands/queries. Maps request models → commands/queries, and DTOs → responses.
+Uses Wolverine's `IMessageBus` to dispatch commands/queries. Maps `Request` models → commands/queries, and `ApplicationDto` → `ApplicationResponse`.
 
-### 7. Database
+### 8. Database
 
 - PostgreSQL via `Npgsql.EntityFrameworkCore.PostgreSQL`
-- Connection string stored in `appsettings.Development.json` (dev) and environment variables/user secrets (prod)
-- `ApplicationConfiguration` enforces a unique index on `Name`:
-  ```csharp
-  builder.HasIndex(e => e.Name).IsUnique();
-  ```
-- Name max length 256 at column level: `builder.Property(e => e.Name).HasMaxLength(256);`
-- Comments max length 1024 at column level: `builder.Property(e => e.Comments).HasMaxLength(1024);`
-
-### 8. Central Package Management
-
-Tech-stack rules require Central Package Management. Since `Directory.Packages.props` does not exist, it will be created in the repo root with version definitions for all packages.
+- Connection string already in `appsettings.Development.json`: `Host=localhost;Database=AiApi;Username=postgres;Password=postgres`
+- EF Core migration generated after entity and DbContext are created
 
 ### 9. Dependency Injection Wiring
 
-- **Application layer** (`DependencyInjection.cs`): `AddApplication()` → registers Wolverine with FluentValidation middleware
-- **Infrastructure layer** (`DependencyInjection.cs`): `AddInfrastructure(connectionString)` → registers `AppDbContext`, `IApplicationRepository`
-- **API layer** (`Program.cs`): Calls `AddApplication()`, `AddInfrastructure()`, `AddProblemDetails()`
+- **Application** (`DependencyInjection.cs`): `AddApplication()` → registers Wolverine with `.UseFluentValidation()` and `AlwaysUseServiceLocationFor<AppDbContext>()`
+- **Infrastructure** (`DependencyInjection.cs`): `AddInfrastructure(connectionString)` → registers `AppDbContext` (Npgsql), `IApplicationRepository` → `ApplicationRepository`
+- **API** (`Program.cs`): calls `builder.Services.AddApplication()`, `builder.Services.AddInfrastructure(connectionString)`, `builder.Services.AddProblemDetails()`
+
+### 10. Central Package Management
+
+`Directory.Packages.props` already exists with versions:
+- `FluentValidation` 12.1.1
+- `Microsoft.AspNetCore.OpenApi` 10.0.8
+- `Microsoft.EntityFrameworkCore` 10.0.4
+- `Microsoft.EntityFrameworkCore.Design` 10.0.4
+- `Microsoft.EntityFrameworkCore.Relational` 10.0.4
+- `Npgsql.EntityFrameworkCore.PostgreSQL` 10.0.2
+- `WolverineFx` 6.3.2
+- `WolverineFx.FluentValidation` 6.3.2
+- `WolverineFx.RuntimeCompilation` 6.3.2
+
+Verify these are latest stable before implementing.
 
 ---
 
@@ -257,17 +239,24 @@ Tech-stack rules require Central Package Management. Since `Directory.Packages.p
 
 | Step | Layer | Tasks |
 |------|-------|-------|
-| 1 | Root | Create `Directory.Packages.props` with all NuGet package versions |
-| 2 | Domain | Create `DomainException`, then `Application` entity |
-| 3 | Infrastructure | Add EF Core/Npgsql packages, create `ApplicationEntity`, `AppDbContext`, `ApplicationConfiguration` |
-| 4 | Infrastructure | Generate initial EF Core migration |
-| 5 | Application | Add WolverineFx/FluentValidation packages, create `ApplicationDto`, `IApplicationRepository`, commands, queries, handlers, validators, mapping extensions |
-| 6 | Application | Create `DependencyInjection.cs` |
-| 7 | Infrastructure | Implement `ApplicationRepository`, create `DependencyInjection.cs` |
-| 8 | API | Create request/response models, `ApplicationsController` |
-| 9 | API | Update `Program.cs` — register all services, add ProblemDetails |
-| 10 | API | Update `appsettings.json` and `appsettings.Development.json` with connection strings |
-| 11 | Verify | Build solution, run migration, test endpoints |
+| 1 | Root | Verify `Directory.Packages.props` versions are current |
+| 2 | Domain | Review & fix `Application.cs` entity (add validation to second constructor) |
+| 3 | Application | Add package references to `.csproj` |
+| 4 | Application | Create `ApplicationDto`, `IApplicationRepository`, mapping extensions |
+| 5 | Application | Create validators: `CreateApplicationValidator`, `UpdateApplicationValidator` |
+| 6 | Application | Create commands & handlers: `CreateApplicationHandler`, `UpdateApplicationHandler` |
+| 7 | Application | Create queries & handlers: `GetApplicationByIdHandler`, `GetApplicationsHandler` |
+| 8 | Application | Create `DependencyInjection.cs` |
+| 9 | Infrastructure | Add package references to `.csproj` |
+| 10 | Infrastructure | Create `ApplicationEntity`, `ApplicationConfiguration`, `AppDbContext` |
+| 11 | Infrastructure | Implement `ApplicationRepository` |
+| 12 | Infrastructure | Create `DependencyInjection.cs` |
+| 13 | Infrastructure | Generate initial EF Core migration |
+| 14 | API | Create request/response models |
+| 15 | API | Create `ApplicationsController` |
+| 16 | API | Update `Program.cs` — register all services |
+| 17 | API | Add `Microsoft.AspNetCore.OpenApi` package reference |
+| 18 | Verify | Build solution, run migration, test all endpoints |
 
 ---
 
@@ -275,29 +264,27 @@ Tech-stack rules require Central Package Management. Since `Directory.Packages.p
 
 | # | Assumption | Justification |
 |---|-----------|---------------|
-| A1 | PostgreSQL is the database | Architecture rules and security rules reference PostgreSQL/Npgsql; `about.md` describes a configuration service backed by PostgreSQL |
-| A2 | EF Core Code-First with migrations | Architecture rules specify EF Core; `Migrations/` folder already exists in Infrastructure |
-| A3 | WolverineFx is the CQRS mediator | Architecture rules explicitly mandate WolverineFx for commands/queries with FluentValidation middleware |
-| A4 | No authentication yet | Deferred per user decision — auth infrastructure doesn't exist yet; will be added in a future work item |
-| A5 | Name uniqueness enforced at DB + app layer | AC5 specifies uniqueness; enforced with DB unique index AND application-layer existence check |
-| A6 | "associated with related configuration IDs" is future scope | Deferred per user decision — the current model has no configuration relation field |
-| A7 | RFC 7807 Problem Details for errors | Security rules mandate it; .NET 10 has built-in `AddProblemDetails()` |
-| A8 | Central Package Management required | Tech-stack rules require it but no `Directory.Packages.props` exists; created as part of this feature |
-| A9 | Separate persistence entity in Infrastructure | Architecture guide states persistence entities "Must never leak outside Infrastructure"; separate `ApplicationEntity` class |
-| A10 | DELETE endpoint included | Per user decision — full CRUD with `DELETE /applications/{id}` returning 204 No Content |
-| A11 | No pagination on GET /applications | Per user decision — return all applications per KISS/YAGNI |
-| A12 | Connection string in appsettings.Development.json | Per user decision — local dev connection string placed in Development settings file |
+| A1 | PostgreSQL is the database | `Npgsql.EntityFrameworkCore.PostgreSQL` already in `Directory.Packages.props`; connection strings pre-configured |
+| A2 | EF Core Code-First with migrations | Architecture rules specify EF Core with `Migrations/` folder |
+| A3 | WolverineFx is the CQRS mediator | Architecture rules explicitly mandate WolverineFx for commands/queries |
+| A4 | No authentication/authorization in this feature | Auth infra doesn't exist; deferred to future work item |
+| A5 | Name uniqueness enforced at both DB and app layers | DB unique index + application-layer existence check for better error messages |
+| A6 | "associated with related configuration IDs" is deferred | Model definition only includes `id`, `name`, `comments`; no configuration relation field specified |
+| A7 | RFC 7807 Problem Details for errors | .NET 10 has built-in `AddProblemDetails()` per architecture recommendations |
+| A8 | Central Package Management already configured | `Directory.Build.props` enables it; `Directory.Packages.props` exists with versions |
+| A9 | Separate persistence entity in Infrastructure | Architecture guide: persistence entities "Must never leak outside Infrastructure" |
+| A10 | No pagination on GET /applications | Not specified in acceptance criteria; KISS/YAGNI |
+| A11 | Connection string in `appsettings.Development.json` is sufficient | Already configured; production uses env vars/user secrets |
+| A12 | DELETE endpoint excluded | Not listed in the work item's endpoints; deferring to explicit requirements |
+| A13 | `IMessageBus` for controller dispatch | Wolverine mediator pattern per architecture CQRS guidance |
 
 ---
 
 ## Questions Requiring Clarification
 
-All questions resolved:
-
-| # | Question | Resolution |
-|---|----------|------------|
-| Q1 | Authentication now or deferred? | **Deferred** — add in future auth work item |
-| Q2 | Configuration IDs relationship? | **Out of scope** — defer to future feature |
-| Q3 | DELETE endpoint? | **Added** — `DELETE /applications/{id}` → 204 No Content |
-| Q4 | Connection string location? | **appsettings.Development.json** |
-| Q5 | Pagination on GET /applications? | **No pagination** — return all applications |
+| # | Question | Context |
+|---|----------|---------|
+| Q1 | **"associated with related configuration IDs"** — The acceptance criteria mention this but the model only has `id`, `name`, `comments`. Add a `ConfigurationIds` field now or defer? | Criteria vs model mismatch |
+| Q2 | **DELETE endpoint** — Work item lists only POST, PUT, GET/{id}, GET. Is `DELETE /applications/{id}` needed? | Scope |
+| Q3 | **Pagination / filtering** — The `GET /applications` returns all. Is pagination/sorting/filtering needed now or deferred? | Performance |
+| Q4 | **Domain entity second constructor** — `Application(Guid id, string name, string? comments)` bypasses `Validate()`. Remove or add validation? | Architectural consistency |
