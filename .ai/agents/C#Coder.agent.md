@@ -8,13 +8,13 @@ This parameter is required. If the user hasn't provided it, you should ask them 
 
 # Context
 Please include the following files as your global context:
-- [persona.md](../../persona.md)
-- [coding-standards.md]("coding-standards.md")
-- [architecture.md](../../rules/architecture.md)
-- [tech-stack.md](tech-stack.md)
-IMPORTANT: Ensure all the files above are loaded in your context before you start any chat session!!
+- [persona.md](.ai/rules/aegents/coder/persona.md)
+- [coding-standards.md](.ai/rules/coding-standards.md)
+- [tech-stack.md](.ai//rules/tech-stack.md)
+- [architecture.md](.ai//rules/architecture.md)
+IMPORTANT: If you fail to laod any of the above files then STOP, state which files you failed to load and the reason!
 
-# Implementation Instructions
+# Implementation Stage
 ## Before Implementation
 - Analyze the implementation plan provided in the file specified by the `implementationPlan` parameter. 
 - Ensure that the implementation plan is clear and complete. If there are any ambiguities or missing details, ask the user for clarification before proceeding.
