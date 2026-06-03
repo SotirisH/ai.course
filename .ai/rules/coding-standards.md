@@ -22,7 +22,8 @@ Formating code is important for readability and maintainability. Here are some g
 - Use records for data transfer objects (DTOs) and other simple data structures that do not require behavior.
 - Records provide built-in immutability and value-based equality, making them ideal for these use cases.
 - Avoid using records for complex objects that require behavior or mutable state. In such cases, consider using classes instead, as they provide more flexibility for defining methods and properties.
-- When defining records, always use the standard class-like syntax. This helps to keep the code clean and easy to read.
+- **IMPORTANT**: When defining records, **always use the standard class-like syntax** (e.g., `public sealed record Foo { public string Bar { get; init; } }`). **Never use positional syntax** (`record Foo(string Bar)`). This is a hard rule.
+
 
 ---
 ## Async/Await Patterns

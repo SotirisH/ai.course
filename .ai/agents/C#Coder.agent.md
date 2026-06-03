@@ -8,7 +8,7 @@ This parameter is required. If the user hasn't provided it, you should ask them 
 
 # Context
 Please include the following files as your global context:
-- [persona.md](.ai/rules/aegents/coder/persona.md)
+- [persona.md](.ai/agents/coder/persona.md)
 - [coding-standards.md](.ai/rules/coding-standards.md)
 - [tech-stack.md](.ai//rules/tech-stack.md)
 - [architecture.md](.ai//rules/architecture.md)
@@ -24,6 +24,11 @@ IMPORTANT: If you fail to laod any of the above files then STOP, state which fil
   - **Work Item Type**: {work_item_type}
   If any of the above data is missing then STOP!
 - If there any section with questions, ask the user to answer those questions before proceeding.
+- **Coding Standards Checkpoint**: Before writing any code, cross-check all planned declarations against `coding-standards.md` and `architecture.md`:
+  - Commands MUST use format: `Verb + Noun + "Command"` (e.g., `CreateProductCommand`), even if the plan uses a shorter name
+  - Queries MUST use format: `Verb + Noun + "Query"` or `Get + Noun + "Query"` (e.g., `GetProductQuery`), even if the plan uses a shorter name
+  - Records (commands, queries, DTOs, request/response models) MUST use **class-like syntax** (e.g., `public sealed record Foo { public string Bar { get; init; } }`). **NEVER use positional syntax** (`record Foo(string Bar)`)
+  - If the plan document specifies any non-conforming names or syntax, OVERRIDE the plan and use the correct convention
 - Once you have a clear and complete implementation plan, proceed to implement the feature in code
 
 ## After Implementation 
