@@ -62,3 +62,8 @@ Formating code is important for readability and maintainability. Here are some g
 - Avoid hardcoding values in code
 - Use constants or enums for fixed values
 - Consolidate magic strings/numbers in a single location for easy maintenance (eg, static class or configuration)
+
+---
+## Solution specs
+- Use `.slnx` when you create a solution to ensure that the solution file is lightweight and only includes project references without any build configurations or platform targets. This promotes faster load times and better performance when working with the solution in an IDE.
+- If the existing solution file is `.sln` and not `.slnx`, you should convert it to `.slnx` by creating a new solution with the same name but with the `.slnx` extension, and then adding the existing projects to the new solution. After that, you can remove the old `.sln` file from the repository.

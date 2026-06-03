@@ -8,5 +8,6 @@
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.2" />
     <PackageVersion Include="WolverineFx" Version="6.3.2" />
     <PackageVersion Include="WolverineFx.FluentValidation" Version="6.3.2" />
+    <PackageVersion Include="WolverineFx.RuntimeCompilation" Version="6.3.2" />
   </ItemGroup>
 </Project>

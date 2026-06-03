@@ -4,12 +4,6 @@
     <ProjectReference Include="..\Ai.Api.Domain\Ai.Api.Domain.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <PackageReference Include="FluentValidation" />
-    <PackageReference Include="WolverineFx" />
-    <PackageReference Include="WolverineFx.FluentValidation" />
-  </ItemGroup>
-
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
