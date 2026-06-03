@@ -110,7 +110,8 @@
 - **Vulnerability Scanning**: Run `dotnet list package --vulnerable` before commits; fix critical/high CVEs immediately. Also use `dotnet outdated` tool for version checks.
 - **No Vulnerable Packages**: Do not introduce packages with known CVEs; update existing ones promptly. Use `validate_cves` tool or GitHub's Dependabot alerts.
 - **Minimal Dependencies**: Only include necessary packages; avoid large frameworks or utilities that are not essential to reduce attack surface.
-- **Regular Updates**: Schedule regular dependency updates (e.g., monthly) to stay current with security patches; The current version policy is N-1.
+- **Latest Updates**: Always opt for the latest versions; The current version policy is minimum N-1. If there are outdated packages, update them as soon as possible to benefit from security patches and improvements.
+- **Regular Updates**: Schedule regular dependency updates (e.g., monthly) to stay current with security patches; The current version policy is minimum N-1.
 - **Minimal Dependencies**: Audit and remove unused `PackageReference` entries regularly. Use `dotnet list package --outdated` to identify stale packages.
 - **Dependabot Configuration**: Add `.github/dependabot.yml` to automate dependency updates and vulnerability alerts. Example:
   ```yaml
