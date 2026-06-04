@@ -433,11 +433,10 @@ Documentation: https://wolverinefx.net/guide/http/mediator.html
         opts.Discovery.IncludeAssembly(typeof(DependencyInjection).Assembly);
     });
 ```
-- Initialize wolverine in the Application layer via an `IHostBuilder` extension method (e.g., `AddApplication(this IHostBuilder host)`). Register it in Program.cs as `builder.Host.AddApplication()`.
-- Use `builder.Services.ConfigureWolverine()` (on `IServiceCollection`) only for service-location overrides like `AlwaysUseServiceLocationFor<AppDbContext>()`. Do NOT call `UseWolverine()` on `IServiceCollection` — it only exists on `IHostBuilder` in WolverineFx 6.x.
-Example of the service-location configuration (goes in Program.cs):
+- Initialize wolverine in the Application layer via an `IHostBuilder` extension method (e.g., `AddApplication(this IHostBuilder host)`). Register it in Infrastructure layer.
+Example:
 ```csharp
-builder.Services.ConfigureWolverine(options =>
+host.ConfigureWolverine(options =>
 {
     options.CodeGeneration.AlwaysUseServiceLocationFor<AppDbContext>();
 });

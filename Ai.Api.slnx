@@ -1,6 +1,6 @@
 <Solution>
-  <Project Path="src/Ai.Api.Domain/Ai.Api.Domain.csproj" />
-  <Project Path="src/Ai.Api.Application/Ai.Api.Application.csproj" />
-  <Project Path="src/Ai.Api.Infrastructure/Ai.Api.Infrastructure.csproj" />
-  <Project Path="src/Ai.Api/Ai.Api.csproj" />
+    <Project Path="src/Ai.Api.Domain/Ai.Api.Domain.csproj" />
+    <Project Path="src/Ai.Api.Application/Ai.Api.Application.csproj" />
+    <Project Path="src/Ai.Api.Infrastructure/Ai.Api.Infrastructure.csproj" />
+    <Project Path="src/Ai.Api/Ai.Api.csproj" />
 </Solution>

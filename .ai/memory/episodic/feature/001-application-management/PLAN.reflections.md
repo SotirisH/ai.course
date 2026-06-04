@@ -1,59 +1,46 @@
-# Reflect & Adapt: Application Management Feature — Planning
+# Plan Reflections: Application Management (001)
 
-**Date**: 2026-06-02  
-**Ticket**: 001  
-**Agent**: planner
+**Date:** 2025-07-17 | **Agent:** planner | **Mode:** Ask (no Git operations in this mode)
 
 ---
 
-## Friction Log
+## 1. Violations & Showstoppers
 
-### 1. Tooling Friction
-
-| Issue | Root Cause | Impact |
-|-------|-----------|--------|
-| `create_file` cannot overwrite existing files | The tool enforces a no-overwrite policy with a file-conflict error | Required manual `Remove-Item` before re-creating the plan file. Adds an extra step to any "overwrite" workflow. |
-| PowerShell rejects `&&` chaining | PowerShell uses `;` not `&&` for command chaining | Initial `git branch --show-current` failed. Had to retry with `;`. Repeated pattern across sessions. |
-| `list_dir` on episodic/feature showed stale files | Old `PLAN.reflections.md`, `Implementation.reflections.md`, `compliance-checklist.md` from prior runs | Had to manually clean up to avoid confusion. No way to bulk-clean via tooling. |
-
-### 2. Process Friction
-
-| Issue | Root Cause | Impact |
-|-------|-----------|--------|
-| "Overwrite completely" duplicates effort | The existing plan was already comprehensive and well-aligned with rules | The new plan is structurally similar. The only meaningful differences are: (a) account for pre-existing `Application.cs` entity → changed CREATE to MODIFY, (b) account for pre-existing `Directory.Packages.props` → changed CREATE to REVIEW, (c) removed DELETE endpoint since not in work item spec. |
-| Context file loading required 5 parallel reads | All context files are mandatory per planner instructions | No issue — all loaded successfully. But if one fails, the workflow stops. |
-
-### 3. Work Item Ambiguities
-
-| Issue | Details |
-|-------|---------|
-| "associated with related configuration IDs" in criteria but not in model | The acceptance criteria text mentions configuration IDs but the Applications model section only defines `id`, `name`, `comments`. Flagged as Q1. |
-| No DELETE endpoint listed | Work item lists POST, PUT, GET/{id}, GET. Previous plan assumed DELETE. Flagged as Q2. |
-| Entity bypasses validation in second constructor | `Application(Guid id, string name, string? comments)` doesn't call `Validate()`. Flagged as Q4. |
+None encountered during this planning session. All context files loaded successfully, directory creation succeeded, and file writes completed without errors.
 
 ---
 
-## Root Cause Analysis
+## 2. Process Friction / Workflow Gaps
 
-1. **Overwrite workflow gap**: The planner agent's "Overwrite completely" option isn't natively supported by `create_file`. The agent must detect the conflict and use `run_in_terminal` to delete first. Consider adding an `--overwrite` parameter to the agent's file creation logic.
-
-2. **PowerShell chaining**: The instructions should note that `;` is required on Windows/PowerShell, not `&&`. This is an environment-awareness gap.
-
-3. **Stale artifacts**: Prior planning/implementation sessions left files that became misleading when re-entering planning. The planner should clean the target directory on "Overwrite."
-
----
-
-## Proposed Improvements
-
-| # | Action | Type |
-|---|--------|------|
-| 1 | Add a pre-step: when "Overwrite" is selected, clean the target directory (`Remove-Item *.md`) before creating new files | Process |
-| 2 | Document that PowerShell uses `;` for command chaining (add to agent persona/instructions) | Documentation |
-| 3 | When work item spec has internal contradictions (criteria vs model), surface them more prominently — maybe a dedicated "Spec Issues" section in the plan | Template |
-| 4 | Consider separating "plan shell" (directory creation, cleanup) from "plan content" to avoid tool conflict | Architecture |
+| # | Issue | Impact | Root Cause |
+|---|-------|--------|------------|
+| PF1 | Existing plan files were found in the target directory from a prior session | Required user prompt to ask whether to keep/update/overwrite. Adds friction to re-planning scenarios. | The planner agent's "check for existing plan" step is working as designed but the user had already deleted related source files (Application.cs, etc.) without cleaning the plan artifacts. |
+| PF2 | The feature branch already existed (`feature/001-application-management`) with stale deleted files in the working tree | Cleanup step removed plan.md files but the git diff showed deleted Domain entities — indicates a partial prior implementation that was rolled back | No mechanism to detect "dirty" feature branches before planning |
 
 ---
 
-## Summary
+## 3. Tooling Friction / Missing Capabilities
 
-The planning workflow completed successfully but with minor friction: a file-overwrite conflict requiring manual cleanup, PowerShell syntax correction, and some duplicate effort from regenerating a plan that was already well-aligned. The key value of the overwrite was re-anchoring the plan to the current state of the codebase (noting existing files like `Application.cs`, `Directory.Packages.props`, `appsettings.json`). Four open questions remain for user clarification before implementation can proceed.
+| # | Issue | Impact | Root Cause |
+|---|-------|--------|------------|
+| TF1 | `read_file` initially failed with relative paths — all paths must be absolute | Minor delay; had to retry all 5 context file reads | Tool requires absolute paths; the agent instruction format uses relative paths in its examples |
+| TF2 | `list_dir` on `Middleware` returned "file not found" instead of listing the directory or returning empty | Minor confusion; had to infer it was empty from the error | The `Middleware` folder doesn't exist yet; `read_file` was used instead of `list_dir` accidentally |
+| TF3 | No tool available to query NuGet package latest stable versions | Had to leave version as "latest stable" in the plan; can't validate actual availability | No NuGet package query capability in the toolset |
+
+---
+
+## 4. Spec Issues Identified
+
+| # | Issue |
+|---|-------|
+| SI-1 | The story text mentions "associated with related configuration IDs" but the model definition has no `configurationIds` field — contradiction between narrative and schema |
+
+---
+
+## 5. Proposed Workflow Improvements
+
+| # | Suggestion | Rationale |
+|---|-----------|-----------|
+| WI1 | Add a pre-planning "clean check" that inspects the feature branch for leftover artifacts and warns the user before proceeding | Would have caught the stale deleted Domain entities and incomplete prior state (see PF2) |
+| WI2 | Add a step to verify the work item's model definition matches the story narrative before generating the plan | Would catch spec issues like SI-1 earlier and more systematically |
+| WI3 | Cache the workspace root path and auto-resolve relative paths in all tool calls | Would eliminate TF1 — saves retries when following context-file instructions that use relative paths |

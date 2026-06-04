@@ -19,8 +19,10 @@ As an administrator, I want to be able to manage applications in the system. Thi
 | AC3 | **Given** an existing application ID, **When** an admin sends `GET /applications/{id}`, **Then** the application details are returned |
 | AC4 | **Given** applications exist in the system, **When** an admin sends `GET /applications`, **Then** a list of all applications is returned |
 | AC5 | **Given** a duplicate application name, **When** `POST /applications` is called, **Then** a `409 Conflict` response is returned |
-| AC6 | **Given** a non-existent application ID, **When** `GET /applications/{id}` or `PUT /applications/{id}` is called, **Then** a `404 Not Found` response is returned |
+| AC6 | **Given** a non-existent application ID, **When** `GET /applications/{id}`, `PUT /applications/{id}`, or `DELETE /applications/{id}` is called, **Then** a `404 Not Found` response is returned |
 | AC7 | **Given** invalid input (e.g., name too long, missing required fields), **When** any endpoint is called, **Then** a `400 Bad Request` with validation errors is returned |
+| AC8 | **Given** an existing application ID, **When** an admin sends `DELETE /applications/{id}`, **Then** the application is deleted and `204 No Content` is returned |
+| AC9 | **Given** a non-existent application ID, **When** `DELETE /applications/{id}` is called, **Then** a `404 Not Found` response is returned |
 
 ---
 
@@ -69,6 +71,7 @@ As an administrator, I want to be able to manage applications in the system. Thi
 |--------|------|---------|
 | CREATE | `Features/ApplicationManagement/Commands/CreateApplicationCommand.cs` | Command + handler for creating an application |
 | CREATE | `Features/ApplicationManagement/Commands/UpdateApplicationCommand.cs` | Command + handler for updating an application |
+| CREATE | `Features/ApplicationManagement/Commands/DeleteApplicationCommand.cs` | Command + handler for deleting an application |
 | CREATE | `Features/ApplicationManagement/Queries/GetApplicationByIdQuery.cs` | Query + handler for retrieving by ID |
 | CREATE | `Features/ApplicationManagement/Queries/GetApplicationsQuery.cs` | Query + handler for listing all applications |
 | CREATE | `Features/ApplicationManagement/DTOs/ApplicationDto.cs` | Internal DTO for query results |
@@ -92,7 +95,7 @@ As an administrator, I want to be able to manage applications in the system. Thi
 
 | Action | File | Purpose |
 |--------|------|---------|
-| CREATE | `Controllers/ApplicationsController.cs` | API controller with 4 endpoints |
+| CREATE | `Controllers/ApplicationsController.cs` | API controller with 5 endpoints |
 | CREATE | `Models/Requests/CreateApplicationRequest.cs` | POST request model |
 | CREATE | `Models/Requests/UpdateApplicationRequest.cs` | PUT request model |
 | CREATE | `Models/Responses/ApplicationResponse.cs` | Response model for all endpoints |
@@ -100,14 +103,18 @@ As an administrator, I want to be able to manage applications in the system. Thi
 
 ### 5.5 NuGet Packages (via `Directory.Packages.props`)
 
-| Package | Layer | Version |
-|---------|-------|---------|
-| `WolverineFx` | Application | latest stable |
-| `WolverineFx.FluentValidation` | Application | latest stable |
-| `WolverineFx.RuntimeCompilation` | Application | latest stable |
-| `FluentValidation` | Application | latest stable |
-| `Microsoft.EntityFrameworkCore` | Infrastructure | latest stable |
-| `Microsoft.EntityFrameworkCore.SqlServer` (or provider) | Infrastructure | latest stable |
+All required packages are already present in `Directory.Packages.props`:
+
+| Package | Layer | Status |
+|---------|-------|--------|
+| `WolverineFx` | Application | ✅ Already in Directory.Packages.props |
+| `WolverineFx.FluentValidation` | Application | ✅ Already in Directory.Packages.props |
+| `WolverineFx.RuntimeCompilation` | Application | ✅ Already in Directory.Packages.props |
+| `FluentValidation` | Application | ✅ Already in Directory.Packages.props |
+| `Microsoft.EntityFrameworkCore` | Infrastructure | ✅ Already in Directory.Packages.props |
+| `Npgsql.EntityFrameworkCore.PostgreSQL` | Infrastructure | ✅ Already in Directory.Packages.props |
+
+No new NuGet packages need to be added.
 
 ---
 
@@ -131,6 +138,7 @@ As an administrator, I want to be able to manage applications in the system. Thi
 |---------|-------------|------|
 | `CreateApplicationCommand` | Verb + Noun + "Command" | ✅ |
 | `UpdateApplicationCommand` | Verb + Noun + "Command" | ✅ |
+| `DeleteApplicationCommand` | Verb + Noun + "Command" | ✅ |
 
 ### 6.3 Queries (CQRS naming checkpoint)
 
@@ -201,7 +209,7 @@ Response: DB → Persistence Entity → Domain Entity / DTO → API Response
 
 | Step | Layer | Task | Depends On |
 |------|-------|------|------------|
-| 1 | NuGet | Add all required packages to `Directory.Packages.props` and csproj files | — |
+| 1 | Infrastructure | Add NuGet package references to Infrastructure csproj (packages already in Directory.Packages.props) | — |
 | 2 | Domain | Create `DomainException` class | — |
 | 3 | Domain | Create `Application` entity | Step 2 |
 | 4 | Application | Create `IApplicationRepository` interface | Step 3 |
@@ -210,6 +218,7 @@ Response: DB → Persistence Entity → Domain Entity / DTO → API Response
 | 7 | Application | Create validators | Step 3 |
 | 8 | Application | Create `CreateApplicationCommand` + handler | Steps 4, 5, 6 |
 | 9 | Application | Create `UpdateApplicationCommand` + handler | Steps 4, 5, 6 |
+| 9a | Application | Create `DeleteApplicationCommand` + handler | Steps 4, 5, 6 |
 | 10 | Application | Create `GetApplicationByIdQuery` + handler | Steps 4, 5, 6 |
 | 11 | Application | Create `GetApplicationsQuery` + handler | Steps 4, 5, 6 |
 | 12 | Application | Create `DependencyInjection` (Wolverine setup) | Steps 7-11 |
@@ -229,7 +238,7 @@ Response: DB → Persistence Entity → Domain Entity / DTO → API Response
 
 | # | Assumption | Justification |
 |---|-----------|---------------|
-| A1 | Database provider is SQL Server | Default for enterprise .NET apps; no provider specified in requirements; can be swapped via configuration |
+| A1 | Database provider is PostgreSQL | `Npgsql.EntityFrameworkCore.PostgreSQL` already in Directory.Packages.props; connection string in appsettings.Development.json uses PostgreSQL format (`Host=localhost`). Per tech-stack.md, PostgreSQL is the default unless story specifies otherwise. |
 | A2 | No authentication/authorization in initial implementation | Story says "administrator" but no auth requirements in acceptance criteria; can be added later as a cross-cutting concern |
 | A3 | `GET /applications` returns all records without pagination | Simpler initial implementation; pagination can be added later if needed |
 | A4 | Application name uniqueness is enforced at DB level via unique index | Most reliable way to guarantee uniqueness under concurrency |
@@ -246,7 +255,80 @@ Response: DB → Persistence Entity → Domain Entity / DTO → API Response
 | # | Question | Impact |
 |---|----------|--------|
 | Q1 | Should the Application model include `configurationIds` as stated in the story text? (See Spec Issue SI-1) | Model design, DB schema, API contract |
-| Q2 | What database provider should be used? (SQL Server, PostgreSQL, etc.) | Infrastructure/DbContext setup, connection string |
+| Q2 | ~~What database provider should be used?~~ ✅ **Resolved**: PostgreSQL (see Assumption A1) | Confirmed by existing codebase — `Npgsql.EntityFrameworkCore.PostgreSQL` in Directory.Packages.props and PostgreSQL connection string in appsettings.Development.json |
 | Q3 | Should `GET /applications` support sorting or filtering? | Query handler design |
 | Q4 | Is soft delete required, or is hard delete out of scope? | The story does not mention DELETE — is this intentional? |
 | Q5 | Should the `PUT` endpoint allow partial updates (PATCH semantics) or full replacement? | Command and handler design |
+
+````
+This is the description of what the code block changes:
+<changeDescription>
+Resolve Q2 since PostgreSQL is confirmed by the codebase evidence
+</changeDescription>
+
+This is the code block that represents the suggested code change:
+```markdown
+| Q2 | ~~What database provider should be used?~~ ✅ **Resolved**: PostgreSQL (see Assumption A1) | Confirmed by existing codebase — `Npgsql.EntityFrameworkCore.PostgreSQL` in Directory.Packages.props and PostgreSQL connection string in appsettings.Development.json |
+```
+
+
+```````
+This is the description of what the code block changes:
+<changeDescription>
+Resolve Q1, Q3, Q4, Q5 and add DELETE endpoint to the acceptance criteria and file change list.
+</changeDescription>
+
+This is the code block that represents the suggested code change:
+```markdown
+| AC5 | **Given** a duplicate application name, **When** `POST /applications` is called, **Then** a `409 Conflict` response is returned |
+| AC6 | **Given** a non-existent application ID, **When** `GET /applications/{id}`, `PUT /applications/{id}`, or `DELETE /applications/{id}` is called, **Then** a `404 Not Found` response is returned |
+| AC7 | **Given** invalid input (e.g., name too long, missing required fields), **When** any endpoint is called, **Then** a `400 Bad Request` with validation errors is returned |
+| AC8 | **Given** an existing application ID, **When** an admin sends `DELETE /applications/{id}`, **Then** the application is deleted and `204 No Content` is returned |
+| AC9 | **Given** a non-existent application ID, **When** `DELETE /applications/{id}` is called, **Then** a `404 Not Found` response is returned |
+```
+
+``````
+This is the description of what the code block changes:
+<changeDescription>
+Add DeleteApplicationCommand to the Application layer file change list
+</changeDescription>
+
+This is the code block that represents the suggested code change:
+```markdown
+| CREATE | `Features/ApplicationManagement/Commands/DeleteApplicationCommand.cs` | Command + handler for deleting an application |
+| CREATE | `Features/ApplicationManagement/Queries/GetApplicationByIdQuery.cs` | Query + handler for retrieving by ID |
+```
+
+```````
+This is the description of what the code block changes:
+<changeDescription>
+Add DeleteApplicationCommand step to implementation order, update controller to 5 endpoints, resolve all remaining questions
+</changeDescription>
+
+This is the code block that represents the suggested code change:
+```markdown
+| 9 | Application | Create `UpdateApplicationCommand` + handler | Steps 4, 5, 6 |
+| 9a | Application | Create `DeleteApplicationCommand` + handler | Steps 4, 5, 6 |
+| 10 | Application | Create `GetApplicationByIdQuery` + handler | Steps 4, 5, 6 |
+| 11 | Application | Create `GetApplicationsQuery` + handler | Steps 4, 5, 6 |
+| 12 | Application | Create `DependencyInjection` (Wolverine setup) | Steps 7-11 |
+```
+
+
+```````
+This is the description of what the code block changes:
+<changeDescription>
+Resolve all remaining open questions with captured answers
+</changeDescription>
+
+This is the code block that represents the suggested code change:
+```markdown
+| Q1 | ~~Should the Application model include `configurationIds`?~~ ✅ **Resolved**: No — exclude it | Stick to the model definition as-is (id, name, comments). The story text is a documentation discrepancy. (Confirmed Assumption A6) |
+| Q2 | ~~What database provider should be used?~~ ✅ **Resolved**: PostgreSQL (see Assumption A1) | Confirmed by existing codebase — `Npgsql.EntityFrameworkCore.PostgreSQL` in Directory.Packages.props and PostgreSQL connection string in appsettings.Development.json |
+| Q3 | ~~Should `GET /applications` support sorting or filtering?~~ ✅ **Resolved**: No — plain list | Return all records as a simple list with no sorting/filtering. (Confirmed Assumption A3) |
+| Q4 | ~~Is DELETE out of scope?~~ ✅ **Resolved**: Yes — add DELETE | Add `DELETE /applications/{id}` endpoint with 204 No Content on success. |
+| Q5 | ~~Should PUT do full replacement or partial updates?~~ ✅ **Resolved**: Full replacement (PUT semantics) | All fields must be provided; missing fields are reset to defaults. (Confirmed Assumption A5) |
+
+### ✅ All open questions resolved. Plan is ready for implementation.
+```
+

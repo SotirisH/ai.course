@@ -4,48 +4,58 @@ namespace Ai.Api.Domain.Entities;
 
 public class Application
 {
-    public Guid Id { get; private set; } = Guid.CreateVersion7();
-    public string Name { get; private set; } = null!;
-    public string? Comments { get; private set; }
-
-    private Application() { }
-
-    public Application(string name, string? comments = null)
+    private Application()
     {
-        Validate(name, comments);
-        Name = name;
-        Comments = comments;
     }
 
-    public Application(Guid id, string name, string? comments = null)
+    public Application(Guid id,
+        string name,
+        string? comments = null)
     {
         Id = id;
         Name = name;
         Comments = comments;
     }
 
-    public void Update(string name, string? comments)
+    public Guid Id { get; private set; } = Guid.CreateVersion7();
+
+    public string Name
     {
-        Validate(name, comments);
-        Name = name;
-        Comments = comments;
+        get;
+        private set
+        {
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                throw new DomainException("Application name is required.");
+            }
+
+            if (value.Length > 256)
+            {
+                throw new DomainException("Application name must not exceed 256 characters.");
+            }
+
+            field = value;
+        }
+    } = null!;
+
+    public string? Comments
+    {
+        get;
+        private set
+        {
+            if (value is not null && value.Length > 1024)
+            {
+                throw new DomainException("Comments must not exceed 1024 characters.");
+            }
+
+            field = value;
+        }
     }
 
-    private static void Validate(string name, string? comments)
+    public void Update(string name,
+        string? comments)
     {
-        if (string.IsNullOrWhiteSpace(name))
-        {
-            throw new DomainException("Application name is required.");
-        }
-
-        if (name.Length > 256)
-        {
-            throw new DomainException("Application name must not exceed 256 characters.");
-        }
-
-        if (comments?.Length > 1024)
-        {
-            throw new DomainException("Comments must not exceed 1024 characters.");
-        }
+        Name = name;
+        Comments = comments;
     }
 }

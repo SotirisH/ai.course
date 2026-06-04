@@ -28,7 +28,8 @@ Formating code is important for readability and maintainability. Here are some g
 ---
 ## Async/Await Patterns
 - Use async/await for all I/O operations and long-running tasks
-- Return Task,Task<T> from async methods
+- All async methods must have suffix "Async" in their name (e.g., `GetDataAsync`) to clearly indicate that they are asynchronous.
+- Return Task,Task<T> or ValueTask,ValueTask<T> from async methods
 - Use ConfigureAwait(false) where appropriate
 - All async methods should have an Async suffix (e.g., GetDataAsync)
 - Avoid async void methods except for event handlers

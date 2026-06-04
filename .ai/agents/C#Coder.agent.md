@@ -29,6 +29,11 @@ IMPORTANT: If you fail to laod any of the above files then STOP, state which fil
   - Queries MUST use format: `Verb + Noun + "Query"` or `Get + Noun + "Query"` (e.g., `GetProductQuery`), even if the plan uses a shorter name
   - Records (commands, queries, DTOs, request/response models) MUST use **class-like syntax** (e.g., `public sealed record Foo { public string Bar { get; init; } }`). **NEVER use positional syntax** (`record Foo(string Bar)`)
   - If the plan document specifies any non-conforming names or syntax, OVERRIDE the plan and use the correct convention
+- **OpenAPI & Scalar Checkpoint**: Per `tech-stack.md`, every API project MUST include "Native OpenAPI + Scalar" setup. Before implementation is complete, verify:
+  - `Ai.Api.csproj` includes `<PackageReference Include="Microsoft.AspNetCore.OpenApi"/>` AND `<PackageReference Include="Scalar.AspNetCore"/>`
+  - `Program.cs` calls `builder.Services.AddOpenApi()` in the service configuration section
+  - `Program.cs` calls `app.MapOpenApi()` AND `app.MapScalarApiReference()` in the middleware/endpoint section
+  - If any of these are missing from the plan or the generated code, ADD them regardless of whether the plan document mentions them
 - Once you have a clear and complete implementation plan, proceed to implement the feature in code
 
 ## After Implementation 
