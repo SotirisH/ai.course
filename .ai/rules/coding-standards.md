@@ -22,12 +22,14 @@ Formating code is important for readability and maintainability. Here are some g
 - Use records for data transfer objects (DTOs) and other simple data structures that do not require behavior.
 - Records provide built-in immutability and value-based equality, making them ideal for these use cases.
 - Avoid using records for complex objects that require behavior or mutable state. In such cases, consider using classes instead, as they provide more flexibility for defining methods and properties.
-- When defining records, always use the standard class-like syntax. This helps to keep the code clean and easy to read.
+- **IMPORTANT**: When defining records, **always use the standard class-like syntax** (e.g., `public sealed record Foo { public string Bar { get; init; } }`). **Never use positional syntax** (`record Foo(string Bar)`). This is a hard rule.
+
 
 ---
 ## Async/Await Patterns
 - Use async/await for all I/O operations and long-running tasks
-- Return Task,Task<T> from async methods
+- All async methods must have suffix "Async" in their name (e.g., `GetDataAsync`) to clearly indicate that they are asynchronous.
+- Return Task,Task<T> or ValueTask,ValueTask<T> from async methods
 - Use ConfigureAwait(false) where appropriate
 - All async methods should have an Async suffix (e.g., GetDataAsync)
 - Avoid async void methods except for event handlers

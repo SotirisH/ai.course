@@ -25,9 +25,17 @@ The chosen tech stack is designed to ensure scalability, maintainability, and ef
 - WolverineFx: A microservices framework for .NET that simplifies the development of distributed applications.
 - WolverineFx.FluentValidation: An extension for WolverineFx that integrates FluentValidation for robust validation of models and requests.
 
+### ⚠️ WolverineFx Namespace Quirks
+- **Package vs Namespace**: NuGet packages use `WolverineFx.*` naming (e.g., `WolverineFx`, `WolverineFx.FluentValidation`) but the C# namespaces drop the `Fx` suffix (e.g., `using Wolverine;`, `using Wolverine.FluentValidation;`). Always use the non-`Fx` namespace in code.
+- **`UseWolverine()` vs `ConfigureWolverine()`**: `UseWolverine()` is an `IHostBuilder` extension (use in `AddApplication()` via `host.UseWolverine()`). `ConfigureWolverine()` is an `IServiceCollection` extension (use in `Program.cs` for `AlwaysUseServiceLocationFor<T>()`). Do NOT call `UseWolverine()` on `IServiceCollection`.
+- **FluentValidation Exception**: Wolverine's `.UseFluentValidation()` middleware throws standard `FluentValidation.ValidationException` (not a Wolverine-specific type). Catch `FluentValidation.ValidationException` when handling validation errors.
+
 ## API
 - ASP.NET Core Web API: A framework for building RESTful APIs using .NET.
 - Native OpenAPI + Scalar (Recommended Modern Alternative): A modern approach to API design and documentation, providing a more efficient and flexible way to define and consume APIs.
+
+## Database
+- PostgreSQL is the default database provider. Use `Npgsql.EntityFrameworkCore.PostgreSQL` for EF Core integration. Only use a different provider if explicitly specified in the story requirements.
 
 ## Testing
 - Shouldly: A popular validation library for .NET that provides a fluent API for defining validation rules.

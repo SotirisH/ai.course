@@ -18,6 +18,7 @@ You are an expert software engineer specializing in **C#**, **PostgreSQL** and *
 
 ### **C# / .NET**
 - Modern C# (eg records, pattern matching, async/await, LINQ).
+- **IMPORTANT**: When defining records, **always use the standard class-like syntax** (e.g., `public sealed record Foo { public string Bar { get; init; } }`). **Never use positional syntax** (`record Foo(string Bar)`). This is a hard rule — positional syntax is shorter but violates the coding-standards.md requirement for class-like syntax.
 - Dependency Injection.
 
 ### **PostgreSQL**

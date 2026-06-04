@@ -118,9 +118,9 @@ Application/
 ```
 
 **Naming Conventions:**
-
 - Commands: Verb + noun + "Command" (e.g., `CreateProductCommand`)
 - Queries: Verb + noun + "Query" or "Get" + noun + "Query" (e.g., `GetProductQuery`)
+- Handlers: Command/Query name + "Handler" (e.g., `CreateProductCommandHandler`)
 - DTOs: Descriptive names ending with "Dto" or "Response"/"Request" (e.g., `ProductDto`, `CreateProductRequest`)
 - Interfaces: Descriptive names with "I" prefix (e.g., `IProductService`)
 
@@ -421,24 +421,27 @@ Documentation: https://wolverinefx.net/guide/http/mediator.html
 - Place the command or query object in the same file as the handler. The name of the file should be the same as the name of the command or query handler.Example: `CreateProductCommandHandler.cs` contains both the `CreateProductCommand` class and the `CreateProductCommandHandler` class.
 - For validations use `Fluent Validation Middleware`. Info: https://wolverinefx.net/guide/handlers/fluent-validation.html. Example:
 ```csharp
-    services.UseWolverine(opts =>
+    // NOTE: WolverineFx 6.x requires UseWolverine() on IHostBuilder, NOT IServiceCollection.
+    // Call from an IHostBuilder extension (e.g., in Application layer's AddApplication() method):
+    host.UseWolverine(opts =>
     {
         // Apply the validation middleware *and* discover and register
         // Fluent Validation validators
         opts.UseFluentValidation();
 
-        // Just a prerequisite for some of the test validators
-        opts.Services.AddSingleton<IDataService, DataService>();
-    })
-````
-- Initialize wolverine in the Application layer, but configure it to use service location for DbContext in the Infrastructure layer to avoid constructor injection issues. See the configuration example below.
+        // Discover handlers in this assembly
+        opts.Discovery.IncludeAssembly(typeof(DependencyInjection).Assembly);
+    });
+```
+- Initialize wolverine in the Application layer via an `IHostBuilder` extension method (e.g., `AddApplication(this IHostBuilder host)`). Register it in Infrastructure layer.
+Example:
 ```csharp
-builder.Services.ConfigureWolverine(options =>
+host.ConfigureWolverine(options =>
 {
     options.CodeGeneration.AlwaysUseServiceLocationFor<AppDbContext>();
 });
 ```
-- Wolverine by is running by default in TypeLoadMode.Dynamic, which compiles handler/middleware code at runtime and WolverineFx no longer ships the runtime compiler. Always include the 'WolverineFx.RuntimeCompilation' NuGet package
+- Wolverine by default runs in TypeLoadMode.Dynamic, which compiles handler/middleware code at runtime and WolverineFx no longer ships the runtime compiler. Always include the 'WolverineFx.RuntimeCompilation' NuGet package.
 
 ### 4. Dependency Injection
 

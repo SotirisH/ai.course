@@ -6,6 +6,7 @@
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.4" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="10.0.4" />
     <PackageVersion Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.2" />
+    <PackageVersion Include="Scalar.AspNetCore" Version="2.1.1" />
     <PackageVersion Include="WolverineFx" Version="6.3.2" />
     <PackageVersion Include="WolverineFx.FluentValidation" Version="6.3.2" />
     <PackageVersion Include="WolverineFx.RuntimeCompilation" Version="6.3.2" />

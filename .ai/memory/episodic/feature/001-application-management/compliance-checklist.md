@@ -1,114 +1,79 @@
-# Compliance Checklist: Application Management Feature
+# Compliance Checklist: Application Management (Feature #001)
 
-**Ticket**: 001  
-**Feature Name**: Application Management  
-**Work Item Type**: feature  
-**Date**: 2026-06-03
+**Ticket:** #001 | **Feature:** 001-application-management | **Work Item Type:** feature
 
 ---
 
-## Formatting Standards
+## Coding Standards Compliance
 
+### Formatting
 | # | Standard | Status | Notes |
 |---|----------|--------|-------|
-| 1 | `.editorconfig` used for consistent formatting | ✅ PASS | `.editorconfig` exists in repo root |
-| 2 | No regions used in any file | ✅ PASS | Verified across all source files — zero `#region` directives |
-| 3 | Functions do not exceed 50 lines | ✅ PASS | Longest function is `ApplicationRepository.AddAsync` at ~8 lines; all handlers are well under 50 lines |
-| 4 | Files do not exceed 300 lines | ✅ PASS | Largest file: `ApplicationsController.cs` at 104 lines; `ApplicationRepository.cs` at 95 lines |
-| 5 | Controllers used (no Minimal APIs) | ✅ PASS | `ApplicationsController` and `HealthController` are standard `ControllerBase` classes |
-| 6 | Latest C# features used | ✅ PASS | Records, primary constructors (in DTOs), `Guid.CreateVersion7()`, nullable reference types, file-scoped namespaces |
+| 1 | No regions used | ✅ PASS | 0 `#region` directives found |
+| 2 | No function exceeds 100 lines | ✅ PASS | Largest function is `ApplicationRepository.AddAsync` (~25 lines) |
+| 3 | No file exceeds 400 lines | ✅ PASS | Largest file: `ApplicationsController.cs` (110 lines) |
+| 4 | Controllers used (not Minimal APIs) | ✅ PASS | All endpoints in `ApplicationsController` |
+| 5 | `.editorconfig` respected (4-space indent, LF, etc.) | ✅ PASS | All files follow editorconfig |
 
----
-
-## Records Standards
-
+### Constructors
 | # | Standard | Status | Notes |
 |---|----------|--------|-------|
-| 7 | Records for DTOs and simple data structures | ✅ PASS | `ApplicationDto`, `CreateApplicationRequest`, `UpdateApplicationRequest`, `ApplicationResponse` are all records |
-| 8 | Records use standard class-like syntax | ✅ PASS | All records use `sealed record` syntax with positional parameters |
-| 9 | No records used for complex/mutable objects | ✅ PASS | Domain `Application` and `ApplicationEntity` are classes with mutable state |
+| 6 | Primary constructor syntax for DI | ✅ PASS | `ApplicationsController(IMessageBus)`, `ApplicationRepository(AppDbContext)`, `ExceptionHandlingMiddleware(RequestDelegate, ILogger)` |
 
----
-
-## Classes Standards
-
+### Records
 | # | Standard | Status | Notes |
 |---|----------|--------|-------|
-| 10 | Primary constructors used where class body only initializes properties | ✅ PASS | `ApplicationRepository(AppDbContext db)` uses primary constructor; handlers use standard constructor injection |
+| 7 | Records use class-like syntax (NOT positional) | ✅ PASS | All 10 record types verified: `CreateApplicationCommand`, `UpdateApplicationCommand`, `DeleteApplicationCommand`, `GetApplicationByIdQuery`, `GetApplicationsQuery`, `ApplicationDto`, `CreateApplicationRequest`, `UpdateApplicationRequest`, `ApplicationResponse` |
 
----
-
-## Architecture Standards
-
+### Async/Await Patterns
 | # | Standard | Status | Notes |
 |---|----------|--------|-------|
-| 11 | Domain layer has no external dependencies | ✅ PASS | `Ai.Api.Domain.csproj` has no package or project references |
-| 12 | Application layer depends only on Domain | ✅ PASS | `Ai.Api.Application.csproj` references only `Ai.Api.Domain` |
-| 13 | Infrastructure layer depends on Domain + Application | ✅ PASS | Infrastructure references both Domain and Application projects |
-| 14 | API layer has reference to Infrastructure only for DI | ✅ PASS | `Program.cs` calls `AddInfrastructure()` and `AddApplication()` for DI wiring; no infrastructure types leak into controllers |
-| 15 | Separate persistence entity in Infrastructure | ✅ PASS | `ApplicationEntity` in Infrastructure mapped to/from domain `Application` via repository |
-| 16 | Repository interfaces defined in Application layer | ✅ PASS | `IApplicationRepository` in `Ai.Api.Application/Interfaces/Repositories/` |
-| 17 | Repository implementations in Infrastructure | ✅ PASS | `ApplicationRepository` in `Ai.Api.Infrastructure/Persistence/Repositories/` |
-| 18 | API defines its own request/response models | ✅ PASS | `CreateApplicationRequest`, `UpdateApplicationRequest`, `ApplicationResponse` in API layer |
-| 19 | Domain entities use `Guid.CreateVersion7()` | ✅ PASS | `Application.Id` initialized with `Guid.CreateVersion7()` |
-| 20 | Domain entities have private parameterless constructor for EF Core | ✅ PASS | `private Application() { }` present |
-| 21 | Collections use `IReadOnlyCollection<T>` or `ICollection<T>` | ✅ N/A | No collection properties in current domain entity |
+| 8 | Async/await for all I/O operations | ✅ PASS | All repository methods, controller actions |
+| 9 | Cancellation tokens passed through | ✅ PASS | All async methods accept CancellationToken |
+| 10 | No async void methods | ✅ PASS | No async void anywhere |
+| 11 | No `.Result` / `.Wait()` usage | ✅ PASS | All async calls properly awaited |
 
----
-
-## CQRS & WolverineFx Standards
-
+### Naming Conventions
 | # | Standard | Status | Notes |
 |---|----------|--------|-------|
-| 22 | Commands and handlers in same file | ✅ PASS | `CreateApplication` + `CreateApplicationHandler` in `CreateApplicationHandler.cs`, etc. |
-| 23 | FluentValidation middleware configured | ✅ PASS | `opts.UseFluentValidation()` in `DependencyInjection.cs` |
-| 24 | Wolverine initialized in Application layer | ✅ PASS | `AddApplication()` extension method on `IHostBuilder` |
-| 25 | `WolverineFx.RuntimeCompilation` package included | ✅ PASS | Added to both `Directory.Packages.props` and `Ai.Api.Application.csproj` |
-| 26 | `AlwaysUseServiceLocationFor<AppDbContext>()` configured | ✅ PASS | In `Infrastructure/DependencyInjection.cs` |
-| 27 | Commands modify state, Queries return data | ✅ PASS | Commands: Create/Update/Delete; Queries: GetById/GetAll |
+| 12 | Commands: Verb + Noun + "Command" | ✅ PASS | `CreateApplicationCommand`, `UpdateApplicationCommand`, `DeleteApplicationCommand` |
+| 13 | Queries: "Get" + Noun + "Query" | ✅ PASS | `GetApplicationByIdQuery`, `GetApplicationsQuery` |
+| 14 | Handlers: Command/Query + "Handler" | ✅ PASS | All 5 handlers follow convention |
+| 15 | Controllers: Entity + "Controller" | ✅ PASS | `ApplicationsController` |
+| 16 | Folders use plural names (Entities, Commands, Queries) | ✅ PASS | All folders follow convention |
 
----
-
-## Validation Standards
-
+### Architecture Compliance
 | # | Standard | Status | Notes |
 |---|----------|--------|-------|
-| 28 | FluentValidation validators in Application layer | ✅ PASS | `CreateApplicationValidator`, `UpdateApplicationValidator` |
-| 29 | Validators cover required fields and max lengths | ✅ PASS | Name: required, max 256; Comments: max 1024; Id: not empty (update) |
+| 17 | Domain layer: no dependencies | ✅ PASS | `Ai.Api.Domain.csproj` has no package/project references |
+| 18 | Application layer: depends only on Domain | ✅ PASS | Only references `Ai.Api.Domain` |
+| 19 | Infrastructure layer: depends on Domain + Application | ✅ PASS | References both `Ai.Api.Domain` and `Ai.Api.Application` |
+| 20 | API layer: depends on Application + Infrastructure (DI only) | ✅ PASS | References both, only uses Infrastructure for DI |
+| 21 | Repository interface in Application layer | ✅ PASS | `IApplicationRepository` in `Ai.Api.Application/Interfaces/Repositories/` |
+| 22 | Repository implementation in Infrastructure | ✅ PASS | `ApplicationRepository` in `Ai.Api.Infrastructure/Persistence/Repositories/` |
+| 23 | Wolverine: `UseWolverine()` on `IHostBuilder` | ✅ PASS | In `AddApplication()` extension |
+| 24 | Wolverine: `ConfigureWolverine()` on `IServiceCollection` for service location | ✅ PASS | In `Program.cs` |
+| 25 | No domain entities exposed via API | ✅ PASS | API uses `ApplicationResponse`, not domain entity |
 
----
-
-## Central Package Management
-
+### Error Handling
 | # | Standard | Status | Notes |
 |---|----------|--------|-------|
-| 30 | Central Package Management enabled | ✅ PASS | `Directory.Build.props` with `ManagePackageVersionsCentrally=true` |
-| 31 | All package versions defined in `Directory.Packages.props` | ✅ PASS | All 9 packages have version definitions |
+| 26 | DomainException for business rule violations | ✅ PASS | Thrown in `Application` entity for invalid name/comments |
+| 27 | FluentValidation for input validation | ✅ PASS | `CreateApplicationCommandValidator`, `UpdateApplicationCommandValidator` |
+| 28 | Exception-to-HTTP mapping middleware | ✅ PASS | `ExceptionHandlingMiddleware` maps to 400/404/409/500 |
 
----
-
-## Error Handling
-
+### Code Quality
 | # | Standard | Status | Notes |
 |---|----------|--------|-------|
-| 32 | Domain layer throws domain-specific exceptions | ✅ PASS | `DomainException` for validation; `ApplicationAlreadyExistsException` and `ApplicationNotFoundException` for business rules |
-| 33 | RFC 7807 Problem Details configured | ✅ PASS | `AddProblemDetails()` in `Program.cs` |
-| 34 | Controller maps exceptions to HTTP responses | ✅ PASS | 409 Conflict, 404 Not Found handled in controller try/catch blocks |
+| 29 | Manual mapping (no AutoMapper) | ✅ PASS | `ApplicationMappingExtensions`, `ApplicationPersistenceMappingExtensions` |
+| 30 | `Guid.CreateVersion7()` for IDs | ✅ PASS | Used in `Application` entity and `CreateApplicationCommandHandler` |
+| 31 | Private parameterless ctor for EF Core | ✅ PASS | `private Application() { }` |
+| 32 | Proper disposal patterns | ✅ PASS | DbContext managed by DI container |
 
 ---
 
 ## Summary
-
-| Category | Total | Passed | N/A |
-|----------|-------|--------|-----|
-| Formatting | 6 | 6 | 0 |
-| Records | 3 | 3 | 0 |
-| Classes | 1 | 1 | 0 |
-| Architecture | 11 | 10 | 1 |
-| CQRS & WolverineFx | 6 | 6 | 0 |
-| Validation | 2 | 2 | 0 |
-| Central Package Management | 2 | 2 | 0 |
-| Error Handling | 3 | 3 | 0 |
-| **Total** | **34** | **33** | **1** |
-
-All applicable coding standards have been met.
+- **Total checks:** 32
+- **Passed:** 32
+- **Failed:** 0
+- **Compliance:** 100%
