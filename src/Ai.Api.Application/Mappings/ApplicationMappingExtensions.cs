@@ -1,21 +1,22 @@
-using Ai.Api.Application.Features.ApplicationManagement.DTOs;
-
 namespace Ai.Api.Application.Mappings;
 
 public static class ApplicationMappingExtensions
 {
-    public static ApplicationDto ToDto(this DomainApp entity)
+    public static CreateApplicationDto ToDto(this CreateApplicationCommand command)
     {
-        return new ApplicationDto
+        return new CreateApplicationDto
         {
-            Id = entity.Id,
-            Name = entity.Name,
-            Comments = entity.Comments
+            Name = command.Name,
+            Comments = command.Comments
         };
     }
 
-    public static IReadOnlyList<ApplicationDto> ToDtoList(this IEnumerable<DomainApp> entities)
+    public static ApplicationDto ApplyTo(this UpdateApplicationCommand command, ApplicationDto existing)
     {
-        return entities.Select(e => e.ToDto()).ToList();
+        return existing with
+        {
+            Name = command.Name,
+            Comments = command.Comments
+        };
     }
 }

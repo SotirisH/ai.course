@@ -1,7 +1,6 @@
 using Ai.Api.Application.Interfaces.Repositories;
 using Ai.Api.Infrastructure.Persistence.Context;
 using Ai.Api.Infrastructure.Persistence.Repositories;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Wolverine;

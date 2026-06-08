@@ -1,4 +1,4 @@
-using Ai.Api.Application.Interfaces.Repositories;
+using Ai.Api.Application.Mappings;
 
 namespace Ai.Api.Application.Features.ApplicationManagement.Commands;
 
@@ -8,15 +8,14 @@ public sealed record CreateApplicationCommand
     public string? Comments { get; init; }
 }
 
-public class CreateApplicationCommandHandler
+public class CreateApplicationCommandHandler(IApplicationRepository repository)
 {
-    public async Task<DomainApp> Handle(
+    public async Task<ApplicationDto> Handle(
         CreateApplicationCommand command,
-        IApplicationRepository repository,
         CancellationToken cancellationToken)
     {
-        var application = new DomainApp(Guid.CreateVersion7(), command.Name, command.Comments);
-        await repository.AddAsync(application, cancellationToken);
-        return application;
+        var dto = command.ToDto();
+
+        return await repository.AddAsync(dto, cancellationToken);
     }
 }

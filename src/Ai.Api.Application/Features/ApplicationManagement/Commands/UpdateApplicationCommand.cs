@@ -1,4 +1,4 @@
-using Ai.Api.Application.Interfaces.Repositories;
+using Ai.Api.Application.Mappings;
 
 namespace Ai.Api.Application.Features.ApplicationManagement.Commands;
 
@@ -9,22 +9,21 @@ public sealed record UpdateApplicationCommand
     public string? Comments { get; init; }
 }
 
-public class UpdateApplicationCommandHandler
+public class UpdateApplicationCommandHandler(IApplicationRepository repository)
 {
-    public async Task<DomainApp> Handle(
+    public async Task<ApplicationDto> Handle(
         UpdateApplicationCommand command,
-        IApplicationRepository repository,
         CancellationToken cancellationToken)
     {
-        DomainApp? application = await repository.GetByIdAsync(command.Id, cancellationToken);
+        ApplicationDto? existing = await repository.GetByIdAsync(command.Id, cancellationToken);
 
-        if (application is null)
+        if (existing is null)
         {
             throw new InvalidOperationException($"Application with ID '{command.Id}' was not found.");
         }
 
-        application.Update(command.Name, command.Comments);
-        await repository.UpdateAsync(application, cancellationToken);
-        return application;
+        ApplicationDto updated = command.ApplyTo(existing);
+
+        return await repository.UpdateAsync(updated, cancellationToken);
     }
 }

@@ -1,9 +1,7 @@
 using Ai.Api.Application;
 using Ai.Api.Infrastructure;
-using Ai.Api.Infrastructure.Persistence.Context;
 using Ai.Api.Middleware;
 using Scalar.AspNetCore;
-using Wolverine;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 

@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace Ai.Api.Infrastructure.Persistence.Entities;
 
-public class ApplicationEntity
+public class Application
 {
     [Key]
     public Guid Id { get; set; }

@@ -1,6 +1,3 @@
-using Ai.Api.Infrastructure.Persistence.Entities;
-using Microsoft.EntityFrameworkCore;
-
 namespace Ai.Api.Infrastructure.Persistence.Context;
 
 public class AppDbContext : DbContext
@@ -9,7 +6,7 @@ public class AppDbContext : DbContext
     {
     }
 
-    public DbSet<ApplicationEntity> Applications => Set<ApplicationEntity>();
+    public DbSet<Entities.Application> Applications => Set<Entities.Application>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
