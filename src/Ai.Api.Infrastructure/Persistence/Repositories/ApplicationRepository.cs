@@ -1,36 +1,34 @@
+using Ai.Api.Application.Features.ApplicationManagement.DTOs;
 using Ai.Api.Application.Interfaces.Repositories;
 using Ai.Api.Infrastructure.Persistence.Context;
-using Ai.Api.Infrastructure.Persistence.Entities;
-using Microsoft.EntityFrameworkCore;
 
 namespace Ai.Api.Infrastructure.Persistence.Repositories;
 
 public class ApplicationRepository(AppDbContext dbContext) : IApplicationRepository
 {
-    public async Task<DomainApp?> GetByIdAsync(Guid id,
+    public async Task<ApplicationDto?> GetByIdAsync(Guid id,
         CancellationToken cancellationToken = default)
     {
-        ApplicationEntity? entity = await dbContext.Applications
+        Entities.Application? entity = await dbContext.Applications
             .AsNoTracking()
             .FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
 
-        return entity?.ToDomain();
+        return entity?.ToDto();
     }
 
-    public async Task<IReadOnlyList<DomainApp>> GetAllAsync(CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<ApplicationDto>> GetAllAsync(CancellationToken cancellationToken = default)
     {
-        List<ApplicationEntity> entities = await dbContext.Applications
+        List<Entities.Application> entities = await dbContext.Applications
             .AsNoTracking()
-            .OrderBy(e => e.Name)
             .ToListAsync(cancellationToken);
 
-        return entities.Select(e => e.ToDomain()).ToList();
+        return entities.Select(e => e.ToDto()).ToList();
     }
 
-    public async Task AddAsync(DomainApp application,
+    public async Task<ApplicationDto> AddAsync(CreateApplicationDto dto,
         CancellationToken cancellationToken = default)
     {
-        ApplicationEntity entity = application.ToEntity();
+        var entity = dto.ToEntity();
 
         await dbContext.Applications.AddAsync(entity, cancellationToken);
 
@@ -41,17 +39,25 @@ public class ApplicationRepository(AppDbContext dbContext) : IApplicationReposit
         catch (DbUpdateException ex) when (IsDuplicateKeyViolation(ex))
         {
             throw new InvalidOperationException(
-                $"An application with the name '{application.Name}' already exists.",
+                $"An application with the name '{dto.Name}' already exists.",
                 ex);
         }
+
+        return entity.ToDto();
     }
 
-    public async Task UpdateAsync(DomainApp application,
+    public async Task<ApplicationDto> UpdateAsync(ApplicationDto dto,
         CancellationToken cancellationToken = default)
     {
-        ApplicationEntity entity = application.ToEntity();
+        Entities.Application? entity = await dbContext.Applications
+            .FirstOrDefaultAsync(e => e.Id == dto.Id, cancellationToken);
 
-        dbContext.Applications.Update(entity);
+        if (entity is null)
+        {
+            throw new InvalidOperationException($"Application with ID '{dto.Id}' was not found.");
+        }
+
+        dto.ApplyTo(entity);
 
         try
         {
@@ -60,15 +66,23 @@ public class ApplicationRepository(AppDbContext dbContext) : IApplicationReposit
         catch (DbUpdateException ex) when (IsDuplicateKeyViolation(ex))
         {
             throw new InvalidOperationException(
-                $"An application with the name '{application.Name}' already exists.",
+                $"An application with the name '{dto.Name}' already exists.",
                 ex);
         }
+
+        return entity.ToDto();
     }
 
-    public async Task DeleteAsync(DomainApp application,
+    public async Task DeleteAsync(Guid id,
         CancellationToken cancellationToken = default)
     {
-        ApplicationEntity entity = application.ToEntity();
+        Entities.Application? entity = await dbContext.Applications
+            .FirstOrDefaultAsync(e => e.Id == id, cancellationToken);
+
+        if (entity is null)
+        {
+            throw new InvalidOperationException($"Application with ID '{id}' was not found.");
+        }
 
         dbContext.Applications.Remove(entity);
         await dbContext.SaveChangesAsync(cancellationToken);

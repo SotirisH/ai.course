@@ -1,1 +1,2 @@
-global using DomainApp = Ai.Api.Domain.Entities.Application;
+// Global usings for Ai.Api.Infrastructure
+global using Microsoft.EntityFrameworkCore;

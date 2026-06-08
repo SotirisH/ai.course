@@ -78,7 +78,7 @@ Application/
 ├── Interfaces/         # Application service interfaces
 │   ├── Repositories/   # Repository interfaces (accept and return DTOs)
 │   └── Services/       # Service interfaces
-├── Mappings/           # Extension classes for mappings (default to use extension classes for mapping instead of automapper)
+├── Mappers/            # Extension classes for mappings (default to use extension classes for mapping instead of automapper)
 ├── Profiles/           # AutoMapper profiles (only if you need to use automapper)
 ├── Validators/         # Input validation (FluentValidation)
 ├── DTOs/
@@ -118,6 +118,7 @@ Infrastructure/
 │   ├── Repositories/   # Repository implementations
 │   └── Configurations/ # Entity configurations (EF Core, etc.)
 ├── ExternalServices/   # Third-party service integrations
+├── Mappers/            # Extension classes for mappings
 ├── Logging/            # Logging implementations
 ├── Caching/            # Caching implementations
 ├── Configuration/      # Configuration providers
@@ -173,6 +174,7 @@ public class OrderRepository : IOrderRepository
 - The API should not expose application DTOs directly. Instead, it should define its own request and response models that are specific to the API contract.
 
 **Standard Folder Structure (Web API):**
+
 ```
 Presentation/ or Api/
 ├── Controllers/        # API controllers (plural)
@@ -183,6 +185,7 @@ Presentation/ or Api/
 │   ├── Requests
 │   └── Responses
 ├── Properties/         # Launch settings, profiles
+├── Mappers/            # Extension classes for mappings 
 └── HealthChecks/       # Health check endpoints
 ```
 
@@ -230,108 +233,9 @@ Infrastructure Layer  -> Domain Layer
 3. **No Circular Dependencies:** Layers cannot depend on each other laterally
 4. **Stable Dependencies:** Depend on more stable things (Domain) rather than volatile ones (Infrastructure)
 
+---
 ## Modeling and Mapping
-
-### 1. API Models (Request/Response Models)
-
-Location: Presentation layer
-Purpose: Define the public API contract
-Notes: May flatten or reshape data for clients
-
-Example:
-```csharp
-public sealed record CreateApplicationRequest
-{
-    public string Name { get; init; } = string.Empty;
-    public string? Comments { get; init; }
-}
-```
-
-### 2. Application DTOs
-
-Location: Application layer
-Purpose: Represent use-case inputs and outputs. DTOs are the sole contract between the Application and Infrastructure layers.
-Notes: Internal only — not exposed to API. Repositories accept and return DTOs, never domain entities.
-
-**DTO placement rules:**
-
-- **Feature DTOs** (`Features/{FeatureName}/DTOs/`) — DTOs used exclusively by a single feature. Default location for command/query inputs and outputs.
-- **Internal DTOs** (`DTOs/Internal/`) — DTOs shared across multiple features within the application. Move a DTO here when more than one feature needs it.
-- **External DTOs** (`DTOs/External/`) — Request/response models for calls to external APIs made from the Application layer.
-
-Example:
-```csharp
-public record OrderDto(Guid Id, decimal Total, CustomerDto Customer);
-```
-
-#### Persistence DTOs (ORM Entities)
-
-Location: Infrastructure layer
-Purpose: Represent database tables
-Notes: Must never leak outside Infrastructure. Mapped to/from application DTOs at the repository boundary.
-
-Example:
-```csharp
-public class OrderEntity
-{
-    public Guid Id { get; set; }
-    public Guid CustomerId { get; set; }
-    public List<OrderItemEntity> Items { get; set; } = new();
-}
-
-```
-
-### 3. Mapping
-
-**Use AutoMapper only if you have to map dynamic objects!**
-
-- Generally favor manual mapping. Create extensions for mapping. These extensions should be in a separate folder in Application layer.
-
-Request flow
-```
-API Layer
-   ↓ (maps request → command)
-Application Layer
-   ↓ (handler logic, prepares DTO)
-   ↓ (calls repository interface with DTO)
-Infrastructure Layer
-   ↓ (maps DTO → persistence entity)
-Database
-```
-
-Response flow
-```
-Infrastructure Layer
-   ↓ (maps persistence entity → DTO)
-Application Layer
-   ↓ (passes DTO to API Layer)
-API Layer
-   ↓ (maps DTO to response model)
-```
-
-- In case you have to use AutoMapper, create profiles in Application layer.
-
-### 4. Validation
-
-- Input validation in Application layer (Validators folder)
-- Uses FluentValidation
-- Can be implemented as a pipeline behavior
-
-### 5. Error Handling
-
-- Domain layer throws domain-specific exceptions
-- Application layer handles validation errors
-- Presentation layer maps exceptions to appropriate HTTP responses
-- Consider using problem details specification for APIs
-
-### 6. Logging
-
-- Used across all layers via dependency injection
-
-## Implementation Guidelines
-
-### 1. DTO Design
-
+### DTO Design
 - DTOs are plain data containers — they carry data, not behavior
 - Use `record` types for immutability and value-based equality
 - Keep DTOs focused on a single use case or data transfer need
@@ -349,7 +253,150 @@ public sealed record ApplicationDto
 }
 ```
 
-### 2. Repository Pattern
+### API Models (Request/Response Models)
+
+Location: Presentation layer
+Purpose: Define the public API contract
+Notes: May flatten or reshape data for clients
+
+Example:
+
+```csharp
+public sealed record CreateApplicationRequest
+{
+    public string Name { get; init; } = string.Empty;
+    public string? Comments { get; init; }
+}
+```
+
+### Application DTOs
+
+Location: Application layer
+Purpose: Represent use-case inputs and outputs. DTOs are the sole contract between the Application and Infrastructure layers.
+Notes: Internal only — not exposed to API. Repositories accept and return DTOs, never domain entities.
+
+**DTO placement rules:**
+
+- **Feature DTOs** (`Features/{FeatureName}/DTOs/`) — DTOs used exclusively by a single feature.
+- **Internal DTOs** (`DTOs/Internal/`) — DTOs shared across multiple features within the application. Move a DTO here when more than one feature needs it.
+- **External DTOs** (`DTOs/External/`) — Request/response models for calls to external APIs made from the Application layer.
+
+Example:
+
+```csharp
+public record OrderDto 
+{
+    public Guid Id { get; init; }
+    public Guid CustomerId { get; init; }
+    public List<OrderItemDto> Items { get; init; } = new();
+});
+```
+
+### Persistence DTOs (ORM Entities)
+
+Location: Infrastructure layer
+Purpose: Represent database tables
+Notes: Must never leak outside Infrastructure. Mapped to/from application DTOs at the repository boundary.
+
+Example:
+
+```csharp
+public class OrderEntity
+{
+    public Guid Id { get; set; }
+    public Guid CustomerId { get; set; }
+    public List<OrderItemEntity> Items { get; set; } = new();
+}
+
+```
+
+## Mapping
+Generally favor manual mapping. **Always** create and use extensions for mapping. These extensions should be in a separate folder in each layer.
+**Note:** Use AutoMapper only if you have to map dynamic objects!
+
+---
+Request flow
+```
+API Layer
+   ↓ (maps request → command)
+Application Layer
+   ↓ (handler logic, prepares DTO)
+   ↓ (calls repository interface with DTO)
+Infrastructure Layer
+   ↓ (maps DTO → persistence entity)
+Database
+```
+---
+Response flow
+
+```
+Infrastructure Layer
+   ↓ (maps persistence entity → DTO)
+Application Layer
+   ↓ (passes DTO to API Layer)
+API Layer
+   ↓ (maps DTO to response model)
+```
+
+- In case you have to use AutoMapper, create profiles in Application layer.
+
+---
+# Imlementation Guidelines
+## API
+1. Always use `ActionResult<T>` instead of `IActionResult` on API controller methods
+Example:
+```csharp
+ public async Task<ActionResult<ApplicationResponse>> Create([FromBody] CreateApplicationRequest request, CancellationToken cancellationToken)
+```
+2. Use route constraints hey prevent unnecessary 404s and improve routing performance.
+Example:
+```csharp
+    [HttpGet("{id:int:min(1)}")]
+```
+3. Use FromBody, FromQuery, FromRoute explicitly when unclear
+Example:
+```csharp
+public async Task<ActionResult> Search([FromQuery] ProductSearchQuery query)
+```
+
+4. Use CancellationToken in all async endpoints
+5. Avoid returning raw strings or anonymous objects. Always return typed DTOs or ProblemDetails.
+Bad:
+```csharp
+  return BadRequest("Invalid input");
+````
+Good:
+```csharp
+  return Problem("Invalid input", statusCode: 400);
+```
+6. Use [Microsoft.AspNetCore.Mvc.DefaultApiConventions](https://learn.microsoft.com/en-us/aspnet/core/web-api/advanced/conventions?view=aspnetcore-10.0#apply-web-api-conventions) 
+whenever is possible. They exist to reduce boilerplate like [ProducesResponseType] and to improve Swagger/OpenAPI documentation consistency.
+Example:
+```csharp
+   [HttpPut("{id}")]
+   [ApiConventionMethod(typeof(DefaultApiConventions), nameof(DefaultApiConventions.Put))]
+   public IActionResult Update(int id, ProductDto dto)
+   {
+   ...
+   }
+````
+7. DO NOT USE Minimal APIs! Use Controllers instead.
+
+## Validation
+- Input validation in Application layer (Validators folder)
+- Uses FluentValidation
+- Can be implemented as a pipeline behavior
+
+## Error Handling
+- Domain layer throws domain-specific exceptions
+- Application layer handles validation errors
+- Presentation layer maps exceptions to appropriate HTTP responses
+- Consider using problem details specification for APIs
+
+## Logging
+- Used across all layers via dependency injection
+
+## Repository Pattern
 
 - Define repository interfaces in Application layer
 - Implement in Infrastructure layer
@@ -357,7 +404,7 @@ public sealed record ApplicationDto
 - Infrastructure layer internally maps between persistence entities and DTOs
 - Consider generic base repository for common operations
 
-### 3. CQRS with wolverinefx
+## CQRS with wolverinefx
 
 **Always** use Wolverine's built-in mediator functionality for handling commands and queries in the Application layer. This promotes separation of concerns and keeps controllers thin.
 Documentation: https://wolverinefx.net/guide/http/mediator.html
@@ -367,6 +414,7 @@ Documentation: https://wolverinefx.net/guide/http/mediator.html
 - Handlers contain single use case logic
 - Place the command or query object in the same file as the handler. The name of the file should be the same as the name of the command or query handler. Example: `CreateProductCommandHandler.cs` contains both the `CreateProductCommand` class and the `CreateProductCommandHandler` class.
 - For validations use `Fluent Validation Middleware`. Info: https://wolverinefx.net/guide/handlers/fluent-validation.html. Example:
+
 ```csharp
     // NOTE: WolverineFx 6.x requires UseWolverine() on IHostBuilder, NOT IServiceCollection.
     // Call from an IHostBuilder extension (e.g., in Application layer's AddApplication() method):
@@ -380,30 +428,30 @@ Documentation: https://wolverinefx.net/guide/http/mediator.html
         opts.Discovery.IncludeAssembly(typeof(DependencyInjection).Assembly);
     });
 ```
+
 - Initialize wolverine in the Application layer via an `IHostBuilder` extension method (e.g., `AddApplication(this IHostBuilder host)`). This is where handler discovery, middleware (e.g., FluentValidation), and all application-level Wolverine configuration go. Register infrastructure-level Wolverine settings (e.g., service location for DbContext) in the Infrastructure layer via `ConfigureWolverine`:
-Example:
+  Example:
+
 ```csharp
 host.ConfigureWolverine(options =>
 {
     options.CodeGeneration.AlwaysUseServiceLocationFor<AppDbContext>();
 });
 ```
+
 - Wolverine by default runs in TypeLoadMode.Dynamic, which compiles handler/middleware code at runtime and WolverineFx no longer ships the runtime compiler. Always include the 'WolverineFx.RuntimeCompilation' NuGet package.
 
-### 4. Dependency Injection
-
+## Dependency Injection
 - Register services in each layer's DependencyInjection class
 - Use extension methods for clean registration (`AddInfrastructure`, `AddApplication`)
 - Follow lifetime scoping principles (Transient, Scoped, Singleton)
 
-### 5. Configuration
-
+## Configuration
 - Strongly-typed options pattern
 - Validation of configuration at startup
 - Separate configuration files per environment
 
-### 6. Records
-
+## Records
 Use records for:
 - DTOs
 - Commands
@@ -411,8 +459,10 @@ Use records for:
 - Query projections
 - API request/response models
 
-## Benefits of This Structure
 
+----
+# Other
+## Benefits of This Structure
 1. **Maintainability:** Clear separation makes it easier to locate and modify code
 2. **Testability:** Business logic can be tested without UI, database, or web server
 3. **Flexibility:** Frameworks and technologies can be swapped with minimal impact
@@ -420,9 +470,7 @@ Use records for:
 5. **Clarity:** Explicit boundaries prevent accidental coupling
 
 ## Adaptation Guidelines
-
 ### For Different Project Types
-
 - **Web API:** Use the Presentation layer structure shown above
 - **Web MVC:** Replace Controllers with Controllers and Views folders
 - **Desktop/WPF/Blazor:** Presentation layer contains Views, ViewModels, Services
@@ -431,12 +479,10 @@ Use records for:
 - **Microservices:** Each service follows this structure independently
 
 ### Technology Stack Variations
-
 - **ORM:** Replace EF Core with Dapper, NHibernate, etc. in Infrastructure/Persistence
 - **Messaging:** Add MessageHandlers folder in Application for event-driven architecture
 - **Caching:** Implement ICacheService in Infrastructure/Caching
 - **Security:** Add Authorization folder in Application/Interfaces for policies
 
-## Conclusion
-
+# Conclusion
 Following these principles will help create a maintainable and scalable architecture for .NET microservices.

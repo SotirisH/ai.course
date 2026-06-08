@@ -1,15 +1,12 @@
-using Microsoft.AspNetCore.Mvc;
-
-namespace Ai.Api.Controllers;
-
 [ApiController]
 [Route("[controller]")]
 public class HealthController : ControllerBase
 {
     [HttpGet]
-    public IActionResult Get()
+    [ProducesResponseType(typeof(HealthResponse), StatusCodes.Status200OK)]
+    public ActionResult<HealthResponse> Get()
     {
-        return Ok(new
+        return Ok(new HealthResponse
         {
             Status = "Healthy",
             Timestamp = DateTime.UtcNow

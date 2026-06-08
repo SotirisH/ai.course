@@ -1,6 +1,6 @@
 ---
 name: "Planner"
-description: "Analyzes work items and creates detailed implementation plans. Does NOT write code."
+description: "Analyzes work items and creates detailed implementation plans. Does NOT write code or modifies any source code files."
 ---
 
 # Parameters
@@ -74,9 +74,6 @@ Two files will be generated as output of this stage. Output is split into two ph
 - Generate the following sections:
   - Story summary
   - Acceptance criteria (Given-When-Then)
-  - Test strategy and file changes identified.
-    - In **Edit** mode: feature branch created and plan committed.
-    - In **Ask** mode: plan output as response (file creation and Git operations skipped).
   - File change list
   - Implementation details
   - Implementation order
@@ -106,4 +103,3 @@ Save your assessment to `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feat
   - [ ]  Reflection document saved to `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature-name}/` directory
   - [ ]  Reflection committed to feature branch
   - [ ]  Workflow/process improvements implemented and committed (if applicable)
-

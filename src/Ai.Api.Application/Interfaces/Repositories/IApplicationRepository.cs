@@ -2,17 +2,17 @@ namespace Ai.Api.Application.Interfaces.Repositories;
 
 public interface IApplicationRepository
 {
-    Task<DomainApp?> GetByIdAsync(Guid id,
+    Task<ApplicationDto?> GetByIdAsync(Guid id,
         CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<DomainApp>> GetAllAsync(CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<ApplicationDto>> GetAllAsync(CancellationToken cancellationToken = default);
 
-    Task AddAsync(DomainApp application,
+    Task<ApplicationDto> AddAsync(CreateApplicationDto dto,
         CancellationToken cancellationToken = default);
 
-    Task UpdateAsync(DomainApp application,
+    Task<ApplicationDto> UpdateAsync(ApplicationDto dto,
         CancellationToken cancellationToken = default);
 
-    Task DeleteAsync(DomainApp application,
+    Task DeleteAsync(Guid id,
         CancellationToken cancellationToken = default);
 }

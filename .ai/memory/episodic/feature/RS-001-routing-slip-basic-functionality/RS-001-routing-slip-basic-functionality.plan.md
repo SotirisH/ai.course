@@ -1,48 +1,60 @@
 # Plan: RS-001 — Routing Slip — Basic Functionality
 
-## Story Summary
-
-Build a **Core.RoutingSlip** class library that implements the Routing Slip pattern — a distributed transaction pattern where a message carries its own itinerary and passes through ordered activities. Phase 1 delivers the core forward-execution engine: fluent builder API, state machine (`Created → Executing → Completed / Faulted`), activity log, compensation log (empty placeholder), variables, and tracking number.
-
-## Acceptance Criteria (Given-When-Then)
-
-### 1.1 Routing Slip Contract
-- **Given** a routing slip is created via the builder
-- **When** inspected
-- **Then** it contains a unique tracking number (`Guid`), an ordered read-only itinerary, an activity log, a compensation log, and a state property (`Created` / `Executing` / `Completed` / `Faulted` / `Compensated`).
-
-### 1.2 Activity Entry
-- **Given** a developer implements `IActivity<TArgument, TResult>`
-- **When** the activity is added to a routing slip itinerary
-- **Then** it exposes a `Name` property and an `ExecuteAsync` method accepting a typed payload and cancellation token, returning `TResult`.
-
-### 1.3 Forward Execution
-- **Given** a routing slip with N activities
-- **When** the engine executes
-- **Then** activities are invoked in order (1→N). Each completed activity is appended to the activity log with a timestamp and any output variables. On full completion, state → `Completed`.
-
-### 1.4 Building a Routing Slip
-- **Given** a developer uses `RoutingSlipBuilder`
-- **When** activities are added via `.AddActivity(...)` and `.Build()` is called
-- **Then** a fully populated routing slip is returned.
-
-### 1.5 State Machine
-- **Given** routing slip execution
-- **When** it starts, runs, completes, or fails
-- **Then** it transitions: `Created → Executing → Completed` (success) or `Created → Executing → Faulted` (any activity throws).
+## Metadata
+- **Ticket**: RS-001
+- **Feature**: Routing Slip — Basic Functionality (`routing-slip-basic-functionality`)
+- **Type**: feature
+- **Mode**: Ask (plan only, no Git operations)
 
 ---
 
-## Spec Consistency Issues (Flagged for Clarification)
+## Story Summary
 
-| # | Issue | Detail |
-|---|-------|--------|
-| **S1** | `IActivity<T, Result>` has shadowed generic `T` | The code snippet in §1.2 declares `Task<Result> ExecuteAsync<T>(T payload, ...)`, which introduces a **method-level** generic `T` that shadows the class-level `T`. This is a design bug. The plan assumes a corrected signature (see Implementation Details). |
-| **S2** | `Compensated` state listed but out of scope | §1.1 lists `Compensated` as a state, but §1.5's state diagram omits it and "Out of Scope" defers compensation to RS-002. The plan **includes** the enum member but the engine will never transition to it in Phase 1. |
-| **S3** | `ExecutionResult<T>` vs plain `Result` | The concepts table mentions "Returned Value: ExecutionResult<T>" but the code shows `Task<Result>` with no wrapper type. The plan uses the plain generic `TResult` (no wrapper) to match the code snippet. |
-| **S4** | Variables not formalized | The story and §1.3 mention "variables" and "output variables returned by the activity" but provide no schema, storage mechanism, or accessor API. The plan introduces a `Dictionary<string, object?>` for variables. |
-| **S5** | No execution engine entry point defined | The story mentions an "engine" but there is no acceptance criterion defining how to start execution. The plan adds an `IRoutingSlipEngine` with `ExecuteAsync(RoutingSlip, CancellationToken)`. |
-| **S6** | Tracking number creation not specified | The builder example never shows how the tracking number is set. The plan auto-generates it via `Guid.NewGuid()` during `Build()`. |
+As a developer, I want to define and execute a routing slip — a sequence of ordered activities that a message passes through — so that I can orchestrate distributed transactions across multiple services.
+
+This is Phase 1 (Basic Functionality): the core forward-execution engine. A routing slip is created via a fluent builder, populated with ordered activities, and executed sequentially in-process. Each activity completion is logged; failures fault the slip and capture the exception.
+
+This work item introduces a **new standalone class library** `Core.RoutingSlip` into the existing `Ai.Api.slnx` solution — it is NOT part of the 4-layer `Ai.Api.*` architecture.
+
+---
+
+## Acceptance Criteria (Given-When-Then)
+
+### AC 1.1 — Routing Slip Contract
+- **Given** a routing slip is built
+- **When** it is inspected
+- **Then** it contains: a unique `TrackingNumber` (Guid), an ordered read-only `Itinerary` of activity entries, an ordered `ActivityLog` of completed entries, and a `State` (one of: `Created`, `Executing`, `Completed`, `Faulted`)
+
+### AC 1.2 — Activity Entry & IActivity<T, TResult> Interface
+- **Given** an activity is defined
+- **When** it implements `IActivity<T, TResult>`
+- **Then** it exposes a `Name` property and an `ExecuteAsync(T payload, CancellationToken)` method returning `Task<TResult>`
+
+### AC 1.3 — Routing Slip Builder (Fluent API)
+- **Given** a developer wants to build a routing slip
+- **When** they use `RoutingSlipBuilder`
+- **Then** they can chain `.AddActivity(activity)` calls and finalize with `.Build()` to obtain a populated `RoutingSlip` contract
+
+### AC 1.4 — Forward Execution
+- **Given** a routing slip with N activities in the itinerary
+- **When** `IRoutingSlipExecutor.ExecuteAsync(routingSlip, ct)` is called
+- **Then** activities execute **in order** (1 → 2 → … → N), asynchronously, and each completed activity is appended to the activity log with a timestamp. If any activity faults, the exception is captured and execution stops.
+
+### AC 1.5 — State Machine
+- **Given** a routing slip exists
+- **When** it transitions through its lifecycle
+- **Then** it follows: `Created → Executing → Completed` on success, or `Created → Executing → Faulted` on failure
+
+---
+
+## Spec Consistency Check
+
+| # | Issue | Severity |
+|---|-------|----------|
+| 1 | **State diagram ambiguity**: The work item shows `Created → Executing → Completed → Faulted` on one line, which could be misread as `Completed → Faulted`. The most logical interpretation (confirmed by the narrative) is: `Created → Executing → Completed` (success path) and `Created → Executing → Faulted` (failure path). | Medium |
+| 2 | **Payload duality**: `IActivity<T, Result>.ExecuteAsync(T payload, ...)` expects the payload at execution time, but the builder example shows payload passed via constructor (`new ReserveInventoryActivity(new ReserveInventoryRequest { ... })`). The plan resolves this by: payload is stored in the activity at construction; the non-generic `IActivity` wraps the internal call, and the generic `ExecuteAsync` receives the stored payload. | Medium |
+| 3 | **`ExecutionResult<T>` "can be void"**: The concepts table mentions `ExecutionResult<T>` and says it "can be void." The plan introduces a non-generic `ExecutionResult` (for void) alongside `ExecutionResult<T>` (for typed results). This needs user confirmation. | Low |
+| 4 | **`IActivity<T, Result>` naming**: The work item uses `Result` as the generic type parameter name — inconsistent with .NET conventions (`TResult`). The plan uses `TResult` internally but `Result` in the public API if the work item explicitly requires it. Currently assuming `TResult` is acceptable. | Low |
 
 ---
 
@@ -50,244 +62,219 @@ Build a **Core.RoutingSlip** class library that implements the Routing Slip patt
 
 | # | Assumption | Justification |
 |---|-----------|---------------|
-| **A1** | Corrected `IActivity` signature to `IActivity<TArgument, TResult>` with `Task<TResult> ExecuteAsync(TArgument payload, CancellationToken cancellationToken)` — no shadowed generic. | The code snippet in §1.2 is functionally broken (shadowing). The corrected design matches the intent described in the concepts table. |
-| **A2** | Variables stored as `Dictionary<string, object?>` on the routing slip. | Simplest in-process key-value store that satisfies the "output variables" requirement without introducing a type system. |
-| **A3** | Activity log entry contains: activity name, timestamp, duration, and optional variables. | Industry-standard logging pattern for activity execution. Matches "with a timestamp" from §1.3. |
-| **A4** | Compensation log is an empty `List<CompensationEntry>` placeholder — populated in RS-002. | Explicitly deferred per "Out of Scope". Structure needed now for the contract. |
-| **A5** | Tracking number auto-generated as `Guid.NewGuid()` in `Build()`. | No story requirement for external assignment. Keeps the builder API simple as shown in §1.4. |
-| **A6** | `Faulted` state captures the exception message and faulted activity index. | Necessary for diagnostics and for RS-002 compensation logic. |
-| **A7** | All models are `sealed record` (class-like syntax) for immutability and value semantics. | Aligns with `coding-standards.md` records rule. |
-| **A8** | Project targets `net10.0`, uses `<ImplicitUsings>enable</ImplicitUsings>` and `<Nullable>enable</Nullable>`. | Consistency with existing solution projects. |
-| **A9** | No NuGet dependencies for Phase 1 — pure in-process library. | No persistence, messaging, or validation frameworks needed yet. |
-| **A10** | Itinerary is immutable after `Build()` — enforced via `IReadOnlyList<T>`. | Matches §1.1 "ordered, read-only list of activity entries". |
+| A1 | `Core.RoutingSlip` is a standalone class library (not layered into Domain/Application/Infrastructure) since it's a focused, reusable engine with no persistence, API, or infrastructure concerns in Phase 1. | Work item specifies "a new project (Class library)" — singular. The library's responsibilities are purely domain-level (entities, execution, builder). |
+| A2 | `IActivity` (non-generic) is needed as a base for storing activities of different `T`/`TResult` types in a single itinerary. | `AddActivity(IActivity)` requires a common type; `IActivity<T, TResult>` alone cannot hold heterogeneous activities. |
+| A3 | Payload is stored in the concrete activity via constructor and the non-generic `ExecuteAsync` delegates to the generic one with the stored payload. | Builder example shows `new ReserveInventoryActivity(new ReserveInventoryRequest { ... })` — payload is construction-time, not execution-time. |
+| A4 | `Guid.CreateVersion7()` for tracking numbers, consistent with the existing `Application` entity pattern. | Architecture rules mandate `Guid.CreateVersion7()` for IDs. |
+| A5 | `ActivityLogEntry` stores: `ActivityName` (string), `Timestamp` (DateTimeOffset), and optionally the `Result` (object?). For Phase 1, minimal fields — name and timestamp. | The work item says "appended to the activity log with a timestamp." No mention of storing results in Phase 1. |
+| A6 | Faulted routing slips store the full `Exception` object (not just a message). | AC 1.4: "The faulted routing slip must capture the full Exception object." |
+| A7 | `Core.RoutingSlip` has no dependency on `Ai.Api.Domain` or any other existing project. | It's a standalone library with its own domain concepts. |
+| A8 | No Wolverine/MediatR usage in this library. It's a plain class library with direct method calls. | Phase 1 is in-process execution with no messaging. Wolverine would add unnecessary complexity for a builder/executor pattern. |
 
 ---
 
-## Open Questions
+## Questions for User Clarification
 
 | # | Question |
 |---|----------|
-| **Q1** | Should `Compensated` be removed from the state enum in Phase 1 since compensation is out of scope? Or keep it for forward compatibility? |
-| **Q2** | Should the corrected `IActivity` interface use `TArgument`/`TResult` naming, or keep the original `T`/`Result` naming (minus the shadowing bug)? |
-| **Q3** | Should variables be keyed by activity name automatically, or should activities explicitly set variable names? |
-| **Q4** | Should the engine be synchronous in Phase 1 or fully async from the start? The `IActivity` interface already returns `Task<TResult>`. |
-| **Q5** | Should the faulted routing slip capture the full `Exception` object or just the message string? Full exception could cause serialization issues later. |
-| **Q6** | Should `Build()` accept an optional tracking number, or always auto-generate? |
+| Q1 | **State diagram**: Confirm that `Completed` and `Faulted` are terminal states (not `Completed → Faulted`). The plan treats them as separate terminal states from `Executing`. |
+| Q2 | **`ExecutionResult<T>` "can be void"**: Should there be a non-generic `ExecutionResult` class (like `Unit`), or should `Task` (non-generic) suffice for void activities? |
+| Q3 | **Activity log content**: Should the activity log capture the result value of each completed activity, or just name + timestamp? (Phase 1 is minimal.) |
+| Q4 | **`AddActivity` signature**: Should it accept `IActivity` (non-generic base), `IActivity<T, TResult>`, or both? The plan uses `IActivity` (non-generic). |
+| Q5 | **Exception capture**: Should the faulted slip expose the captured exception as a property (`Exception? FaultException`), or only via internal state? |
+| Q6 | **Duplicate activity names**: Should the builder validate that all activities have unique names within an itinerary? |
+| Q7 | **Empty itinerary**: Should `Build()` throw if no activities were added, or is an empty slip (instant `Completed`) acceptable? |
+
+---
+
+## Test Strategy
+
+### Unit Tests (`Core.RoutingSlip.Tests` — xUnit + Shouldly)
+| Test Area | Tests |
+|-----------|-------|
+| **RoutingSlipBuilder** | Building with 0, 1, N activities; Build() returns correct itinerary order; activities preserve their names |
+| **RoutingSlip entity** | Initial state is `Created`; state transitions are valid; invalid transitions throw; tracking number is unique |
+| **RoutingSlipExecutor** | Sequential execution order verified; activity log populated after each success; faulted slip on exception; exception captured; all-activities-success → `Completed`; cancellation respected |
+| **Itinerary** | Immutability of the read-only list; order preservation |
+| **IActivity (mock)** | Mock activities return expected results; mock activities throw to test fault path |
 
 ---
 
 ## File Change List
 
-All files are **new** under `src/Core.RoutingSlip/`.
+### New Project: `Core.RoutingSlip`
 
-| # | File | Layer / Concern |
-|---|------|-----------------|
-| 1 | `Core.RoutingSlip.csproj` | Project file |
-| 2 | `Models/RoutingSlipState.cs` | Enum: state machine states |
-| 3 | `Models/RoutingSlip.cs` | Core entity: routing slip contract |
-| 4 | `Models/ItineraryEntry.cs` | Value object: a single activity entry in the itinerary |
-| 5 | `Models/ActivityLogEntry.cs` | Value object: completed activity record |
-| 6 | `Models/CompensationEntry.cs` | Value object: compensation data placeholder |
-| 7 | `Activities/IActivity.cs` | Interface: activity contract |
-| 8 | `Engine/IRoutingSlipEngine.cs` | Interface: execution engine contract |
-| 9 | `Engine/RoutingSlipEngine.cs` | Implementation: forward-execution engine |
-| 10 | `Builders/RoutingSlipBuilder.cs` | Fluent builder API |
-| 11 | `Ai.Api.slnx` (edit) | Add project reference to solution |
+| # | File Path | Layer/Purpose |
+|---|-----------|---------------|
+| 1 | `src/Core.RoutingSlip/Core.RoutingSlip.csproj` | Project file (net10.0, no external deps) |
+| 2 | `src/Core.RoutingSlip/IActivity.cs` | Non-generic activity interface |
+| 3 | `src/Core.RoutingSlip/IActivity.Generic.cs` | `IActivity<T, TResult>` (per work item spec) |
+| 4 | `src/Core.RoutingSlip/ExecutionResult.cs` | Typed/no-result execution wrapper |
+| 5 | `src/Core.RoutingSlip/RoutingSlipState.cs` | Enum: Created, Executing, Completed, Faulted |
+| 6 | `src/Core.RoutingSlip/RoutingSlip.cs` | Main entity (tracking number, itinerary, log, state, exception) |
+| 7 | `src/Core.RoutingSlip/ActivityEntry.cs` | Itinerary entry wrapping an `IActivity` |
+| 8 | `src/Core.RoutingSlip/ActivityLogEntry.cs` | Completed activity record (name, timestamp) |
+| 9 | `src/Core.RoutingSlip/RoutingSlipBuilder.cs` | Fluent builder: `AddActivity()` + `Build()` |
+| 10 | `src/Core.RoutingSlip/IRoutingSlipExecutor.cs` | Executor interface |
+| 11 | `src/Core.RoutingSlip/RoutingSlipExecutor.cs` | Sequential execution implementation |
+| 12 | `src/Core.RoutingSlip/RoutingSlipException.cs` | Domain exception for routing-slip-specific errors |
+
+### Modified Files
+
+| # | File Path | Change |
+|---|-----------|--------|
+| 13 | `Ai.Api.slnx` | Add `<Project Path="src/Core.RoutingSlip/Core.RoutingSlip.csproj" />` |
+| 14 | `Directory.Packages.props` | No changes needed (library has no external NuGet dependencies) |
+
+### New Test Project: `Core.RoutingSlip.Tests`
+
+| # | File Path | Purpose |
+|---|-----------|---------|
+| 15 | `tests/Core.RoutingSlip.Tests/Core.RoutingSlip.Tests.csproj` | Test project (xUnit + Shouldly) |
+| 16 | `tests/Core.RoutingSlip.Tests/RoutingSlipBuilderTests.cs` | Builder tests |
+| 17 | `tests/Core.RoutingSlip.Tests/RoutingSlipExecutorTests.cs` | Executor tests |
 
 ---
 
 ## Implementation Details
 
 ### 1. `Core.RoutingSlip.csproj`
-- SDK: `Microsoft.NET.Sdk`
-- `TargetFramework`: `net10.0`
-- `ImplicitUsings`: `enable`
-- `Nullable`: `enable`
-- No package references.
+```xml
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+</Project>
+```
+No NuGet dependencies for Phase 1. Uses `Guid.CreateVersion7()` which is built into .NET 10.
 
-### 2. `RoutingSlipState` (enum)
-
+### 2. `IActivity.cs` — Non-generic base interface
 ```csharp
+namespace Core.RoutingSlip;
+
+public interface IActivity
+{
+    string Name { get; }
+    Task ExecuteAsync(CancellationToken cancellationToken);
+}
+```
+The itinerary stores `IActivity` instances. This allows heterogeneous activity types.
+
+### 3. `IActivity.Generic.cs` — Typed interface (per work item)
+```csharp
+namespace Core.RoutingSlip;
+
+public interface IActivity<T, TResult> : IActivity
+{
+    Task<TResult> ExecuteAsync(T payload, CancellationToken cancellationToken);
+}
+```
+Concrete activities implement this. They store `T payload` from their constructor and the non-generic `IActivity.ExecuteAsync` delegates to the generic one.
+
+### 4. `ExecutionResult.cs`
+```csharp
+namespace Core.RoutingSlip;
+
+// For activities that return void
+public sealed record ExecutionResult
+{
+    public static readonly ExecutionResult Success = new();
+}
+
+// For activities that return a value
+public sealed record ExecutionResult<T>
+{
+    public T? Value { get; init; }
+    public bool IsSuccess { get; init; } = true;
+
+    public static ExecutionResult<T> FromResult(T value) => new() { Value = value };
+}
+```
+
+### 5. `RoutingSlipState.cs`
+```csharp
+namespace Core.RoutingSlip;
+
 public enum RoutingSlipState
 {
     Created,
     Executing,
     Completed,
-    Faulted,
-    Compensated       // Reserved for RS-002; never set in Phase 1
+    Faulted
 }
 ```
 
-### 3. `RoutingSlip` (sealed record, class-like syntax)
+### 6. `RoutingSlip.cs` — Main entity
+- `Guid TrackingNumber { get; }` = `Guid.CreateVersion7()`
+- `IReadOnlyList<ActivityEntry> Itinerary { get; }` — set once at build time
+- `IReadOnlyList<ActivityLogEntry> ActivityLog { get; }` — grows during execution
+- `RoutingSlipState State { get; private set; }` — starts as `Created`
+- `Exception? FaultException { get; private set; }` — captured on fault
+- Methods: `TransitionToExecuting()`, `RecordActivityCompletion(ActivityLogEntry)`, `TransitionToCompleted()`, `Fault(Exception)`
+- Private parameterless constructor + internal constructor for builder
 
-```csharp
-public sealed record RoutingSlip
-{
-    public Guid TrackingNumber { get; init; }
-    public RoutingSlipState State { get; init; }
-    public IReadOnlyList<ItineraryEntry> Itinerary { get; init; } = Array.Empty<ItineraryEntry>();
-    public IReadOnlyList<ActivityLogEntry> ActivityLog { get; init; } = Array.Empty<ActivityLogEntry>();
-    public IReadOnlyList<CompensationEntry> CompensationLog { get; init; } = Array.Empty<CompensationEntry>();
-    public Dictionary<string, object?> Variables { get; init; } = new();
-}
-```
+### 7. `ActivityEntry.cs`
+- Wraps `IActivity Activity { get; }`
+- `int Position { get; }` — 0-based index in itinerary
+- Immutable; created by the builder
 
-### 4. `ItineraryEntry` (sealed record)
-
-```csharp
-public sealed record ItineraryEntry
-{
-    public string Name { get; init; } = string.Empty;
-    public int Position { get; init; }
-    public object Activity { get; init; } = null!;  // The IActivity instance (erased generic)
-}
-```
-
-### 5. `ActivityLogEntry` (sealed record)
-
+### 8. `ActivityLogEntry.cs`
 ```csharp
 public sealed record ActivityLogEntry
 {
     public string ActivityName { get; init; } = string.Empty;
-    public DateTime Timestamp { get; init; }
-    public TimeSpan Duration { get; init; }
-    public Dictionary<string, object?> Variables { get; init; } = new();
+    public DateTimeOffset Timestamp { get; init; }
 }
 ```
+Uses class-like record syntax (per coding standards).
 
-### 6. `CompensationEntry` (sealed record)
+### 9. `RoutingSlipBuilder.cs`
+- `AddActivity(IActivity activity)` — appends to internal list
+- `Build()` — validates at least one activity (or allows empty per Q7), creates `RoutingSlip` with ordered `ActivityEntry` list
+- Returns `RoutingSlip` with state `Created`
 
+### 10. `IRoutingSlipExecutor.cs`
 ```csharp
-public sealed record CompensationEntry
+public interface IRoutingSlipExecutor
 {
-    public string ActivityName { get; init; } = string.Empty;
-    public Dictionary<string, object?> Data { get; init; } = new();
+    Task ExecuteAsync(RoutingSlip routingSlip, CancellationToken cancellationToken);
 }
 ```
 
-### 7. `IActivity<TArgument, TResult>` (corrected interface)
+### 11. `RoutingSlipExecutor.cs`
+- Validates slip is in `Created` state
+- Transitions to `Executing`
+- Iterates itinerary in order
+- For each entry: calls `activity.ExecuteAsync(ct)`, catches exceptions → fault the slip, records log entry on success
+- On completion: transitions to `Completed`
 
-```csharp
-public interface IActivity<TArgument, TResult>
-{
-    string Name { get; }
-    Task<TResult> ExecuteAsync(TArgument payload, CancellationToken cancellationToken);
-}
-```
-
-**Note:** This corrects the shadowed generic `T` from the work item code snippet. The class-level `T` is renamed to `TArgument`, and the method no longer introduces its own generic parameter.
-
-### 8. `IRoutingSlipEngine`
-
-```csharp
-public interface IRoutingSlipEngine
-{
-    Task<RoutingSlip> ExecuteAsync(RoutingSlip routingSlip, CancellationToken cancellationToken = default);
-}
-```
-
-### 9. `RoutingSlipEngine` (implementation)
-
-**Algorithm:**
-1. Validate routing slip state is `Created`; throw `InvalidOperationException` otherwise.
-2. Transition state to `Executing`.
-3. For each `ItineraryEntry` in order (by `Position`):
-   - Cast `entry.Activity` to the appropriate `IActivity<,>` via reflection (store a non-generic wrapper in the entry — see note below).
-   - Record start timestamp.
-   - Await `activity.ExecuteAsync(payload, ct)`.
-   - On success: append `ActivityLogEntry` to log, collect any output into `Variables`.
-   - On exception: transition state to `Faulted`, set fault metadata, stop execution.
-4. If all activities complete: transition state to `Completed`.
-5. Return the updated routing slip.
-
-**Non-generic activity wrapper approach:** Since `IActivity<TArgument, TResult>` is generic and the itinerary needs to store heterogeneous activities, introduce an internal non-generic wrapper interface:
-
-```csharp
-internal interface IActivityInvoker
-{
-    string Name { get; }
-    Task<object?> InvokeAsync(object? payload, CancellationToken cancellationToken);
-}
-```
-
-Each `ItineraryEntry` stores an `IActivityInvoker`. The builder wraps each `IActivity<TArgument, TResult>` in an adapter that implements `IActivityInvoker`.
-
-### 10. `RoutingSlipBuilder`
-
-```csharp
-public class RoutingSlipBuilder
-{
-    private readonly List<ItineraryEntry> _entries = new();
-
-    public RoutingSlipBuilder AddActivity<TArgument, TResult>(IActivity<TArgument, TResult> activity, TArgument payload)
-    {
-        var entry = new ItineraryEntry
-        {
-            Name = activity.Name,
-            Position = _entries.Count,
-            Activity = new ActivityInvoker<TArgument, TResult>(activity, payload)
-        };
-        _entries.Add(entry);
-        return this;
-    }
-
-    public RoutingSlip Build()
-    {
-        return new RoutingSlip
-        {
-            TrackingNumber = Guid.NewGuid(),
-            State = RoutingSlipState.Created,
-            Itinerary = _entries.AsReadOnly()
-        };
-    }
-}
-```
-
-### Naming Convention Checkpoint
-
-| Item | Name | Convention Check |
-|------|------|-----------------|
-| Enum | `RoutingSlipState` | ✅ PascalCase, singular noun |
-| Record | `RoutingSlip` | ✅ PascalCase, singular noun |
-| Record | `ItineraryEntry` | ✅ PascalCase, singular noun |
-| Record | `ActivityLogEntry` | ✅ PascalCase, singular noun |
-| Record | `CompensationEntry` | ✅ PascalCase, singular noun |
-| Interface | `IActivity<TArgument, TResult>` | ✅ `I` prefix |
-| Interface | `IRoutingSlipEngine` | ✅ `I` prefix |
-| Class | `RoutingSlipEngine` | ✅ Interface name without `I` |
-| Class | `RoutingSlipBuilder` | ✅ PascalCase, descriptive |
-| Async method | `ExecuteAsync` | ✅ Async suffix |
-| Async method | `InvokeAsync` | ✅ Async suffix |
+### 12. `RoutingSlipException.cs`
+Domain exception for invalid state transitions, empty itineraries, etc.
 
 ---
 
 ## Implementation Order
 
-1. **Create project** — `Core.RoutingSlip.csproj` and add to `Ai.Api.slnx`.
-2. **Enums** — `RoutingSlipState.cs`
-3. **Models (bottom-up)** — `CompensationEntry.cs` → `ActivityLogEntry.cs` → `ItineraryEntry.cs` → `RoutingSlip.cs`
-4. **Activity interface** — `IActivity.cs` + internal `IActivityInvoker` + `ActivityInvoker<TArgument, TResult>` adapter
-5. **Builder** — `RoutingSlipBuilder.cs`
-6. **Engine interface & implementation** — `IRoutingSlipEngine.cs` → `RoutingSlipEngine.cs`
-7. **Build & verify** — `dotnet build` the solution
+| Step | Action | Files |
+|------|--------|-------|
+| 1 | Create `src/Core.RoutingSlip/` directory and `.csproj` | `Core.RoutingSlip.csproj` |
+| 2 | Add project reference to `Ai.Api.slnx` | `Ai.Api.slnx` |
+| 3 | Create enums and exceptions | `RoutingSlipState.cs`, `RoutingSlipException.cs` |
+| 4 | Create interfaces | `IActivity.cs`, `IActivity.Generic.cs`, `IRoutingSlipExecutor.cs` |
+| 5 | Create value/result types | `ExecutionResult.cs` |
+| 6 | Create domain entities | `ActivityEntry.cs`, `ActivityLogEntry.cs`, `RoutingSlip.cs` |
+| 7 | Create builder | `RoutingSlipBuilder.cs` |
+| 8 | Create executor | `RoutingSlipExecutor.cs` |
+| 9 | Create test project and tests | `Core.RoutingSlip.Tests.csproj`, test files |
+| 10 | Verify build: `dotnet build` | — |
+| 11 | Run tests: `dotnet test` | — |
 
 ---
 
-## Test Strategy
-
-**Test project:** `tests/Core.RoutingSlip.Tests/` (xUnit + Shouldly, target `net10.0`)
-
-| Test | Type | Covers |
-|------|------|--------|
-| `RoutingSlipBuilder` builds with correct defaults | Unit | AC 1.1, 1.4 |
-| `RoutingSlipBuilder` preserves activity order | Unit | AC 1.4 |
-| `RoutingSlipBuilder` auto-generates unique tracking numbers | Unit | AC 1.1 |
-| Engine executes activities in order (happy path) | Unit | AC 1.3 |
-| Engine transitions `Created → Executing → Completed` | Unit | AC 1.5 |
-| Engine populates activity log after each success | Unit | AC 1.3 |
-| Engine captures variables from activity output | Unit | AC 1.3 |
-| Engine transitions to `Faulted` on activity exception | Unit | AC 1.5 |
-| Engine stops execution after first fault | Unit | AC 1.3, 1.5 |
-| Engine throws if state is not `Created` at start | Unit | Edge case |
-| Cancellation token is honored mid-execution | Unit | Edge case |
-| Empty itinerary transitions straight to `Completed` | Unit | Edge case |
+## Out of Scope (Explicitly Deferred)
+- Compensation / rollback logic → RS-002
+- Exception logging (ILogger integration) → RS-003
+- Activity subscriptions / saga-based routing slip host
+- Message transport — everything is in-process

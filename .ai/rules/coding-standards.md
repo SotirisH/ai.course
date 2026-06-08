@@ -1,8 +1,10 @@
 # NET/C# Best Practices
-Your task is to ensure when you write any .NET/C# code, it meets the best practices. 
-This includes:
 
-## Formating 
+Your task is to ensure when you write any .NET/C# code, it meets the best practices.
+Use the latest features of C# to write clean and concise code.
+This also includes:
+
+## Formating
 Formating code is important for readability and maintainability. Here are some guidelines to follow:
 - Always format the code using the `.editorconfig` that is located on the root repo folder to enforce consistent formatting across the codebase.
 - Format all code using JetBrains Rider’s default C# cleanup profile.
@@ -10,20 +12,27 @@ Formating code is important for readability and maintainability. Here are some g
 - Functions should not exceed 50 lines of code. If a function is longer than that, it may be doing too much and should be refactored.
 - Recommended maximum number of code lines per file is 300. If a file exceeds that, consider breaking it down into smaller files or classes.
 - DO NOT USE regions to group related functions within a class.
-- DO NOT USE Minimal APIs! Use Controllers instead.
-- Use the latest features of C# to write clean and concise code.
+- After generating code, automatically run the JetBrains action CodeCleanup:Full Cleanup on the current file. If imports exist, also run OptimizeImports.
+
+---
+## Generic Folder Naming Conventions
+- **Plural Folder Names:** Use plural for collections of similar items (`Entities`, `Commands`, `Queries`)
+- **Singular for Specific:** Use singular for unique items or when representing a concept (`Middleware`, `Filter`)
+- **Group by Feature:** When appropriate, group by business feature rather than technical type (alternative structure)
+- **Consistent Casing:** Use PascalCase for all folder and file names
+- **Descriptive Names:** Folders should clearly indicate their purpose
 
 ---
 ## Constructors
 - Use primary constructor syntax for dependency injection (e.g., `public class MyClass(IDependency dependency)`)
 - Also Primary constructors should be used for classes that as a body have logic only for the  initialization of properties or fields. This increases the readability.
+
 ---
 ## Records
 - Use records for data transfer objects (DTOs) and other simple data structures that do not require behavior.
 - Records provide built-in immutability and value-based equality, making them ideal for these use cases.
 - Avoid using records for complex objects that require behavior or mutable state. In such cases, consider using classes instead, as they provide more flexibility for defining methods and properties.
 - **IMPORTANT**: When defining records, **always use the standard class-like syntax** (e.g., `public sealed record Foo { public string Bar { get; init; } }`). **Never use positional syntax** (`record Foo(string Bar)`). This is a hard rule.
-
 
 ---
 ## Async/Await Patterns
@@ -67,5 +76,12 @@ Formating code is important for readability and maintainability. Here are some g
 
 ---
 ## Solution specs
-- Use `.slnx` when you create a solution to ensure that the solution file is lightweight and only includes project references without any build configurations or platform targets. This promotes faster load times and better performance when working with the solution in an IDE.
-- If the existing solution file is `.sln` and not `.slnx`, you should convert it to `.slnx` by creating a new solution with the same name but with the `.slnx` extension, and then adding the existing projects to the new solution. After that, you can remove the old `.sln` file from the repository.
+Use `.slnx` when you create a solution to ensure that the solution file is lightweight and only includes project references 
+without any build configurations or platform targets. This promotes faster load times and better performance when working with the solution in an IDE.
+If the existing solution file is `.sln` and not `.slnx`, you should prompt the user  convert it to `.slnx`. If user agrees then:
+1. Create a new solution with the same name but with the `.slnx` extension
+2. Then add the existing projects to the new solution.
+3. After that, you can remove the old `.sln` file from the repository.
+
+## GlobalUsings
+If a using statement is present in most `*.cs` files of the project(70% threshold) then consolidate them in an `GlobalUsings.cs`

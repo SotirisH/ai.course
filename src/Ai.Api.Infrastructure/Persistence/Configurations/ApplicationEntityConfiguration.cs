@@ -1,12 +1,10 @@
-using Ai.Api.Infrastructure.Persistence.Entities;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Ai.Api.Infrastructure.Persistence.Configurations;
 
-public class ApplicationEntityConfiguration : IEntityTypeConfiguration<ApplicationEntity>
+public class ApplicationEntityConfiguration : IEntityTypeConfiguration<Entities.Application>
 {
-    public void Configure(EntityTypeBuilder<ApplicationEntity> builder)
+    public void Configure(EntityTypeBuilder<Entities.Application> builder)
     {
         builder.ToTable("Applications");
 

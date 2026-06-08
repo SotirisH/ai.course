@@ -2,7 +2,6 @@ using System.Net;
 using System.Text.Json;
 using Ai.Api.Domain.Exceptions;
 using FluentValidation;
-using Microsoft.AspNetCore.Mvc;
 
 namespace Ai.Api.Middleware;
 
