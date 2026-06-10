@@ -8,11 +8,10 @@ This document describes a comprehensive testing structure and strategy for C# AP
 
 ```
 tests/
-├── UnitTests/              # Unit tests for handlers, validators, mappers, domain logic
-├── IntegrationTests/       # Integration tests for repositories, DbContext (Testcontainers)
-└── E2ETests/              # API integration tests using WebApplicationFactory
+├── Unit/              # Unit tests for handlers, validators, mappers, domain logic
+├── Integration/       # Integration tests for API, repositories, DbContext & API (Testcontainers)
+└── E2E/               # SPA integration tests using playright
 ```
-
 ## Test Layer Definitions
 
 ### Unit Tests (`tests/UnitTests/`)
@@ -30,8 +29,8 @@ tests/
 
 **Tools**:
 - **xUnit** (test framework)
-- **Shouldly** or **FluentAssertions** (assertions)
-- **Moq** or **NSubstitute** (mocking dependencies)
+- **Shouldly** (assertions)
+- **Moq**  (mocking dependencies)
 
 **Characteristics**:
 - Fast execution (milliseconds)
@@ -41,32 +40,12 @@ tests/
 - Deterministic results
 - No I/O operations
 
-**Example Structure**:
-```
-tests/UnitTests/
-├── Features/
-│   ├── UserManagement/
-│   │   ├── CreateUserCommandHandlerTests.cs
-│   │   ├── GetUserQueryHandlerTests.cs
-│   │   └── UpdateUserCommandHandlerTests.cs
-│   └── OrderProcessing/
-│       ├── CreateOrderCommandHandlerTests.cs
-│       └── OrderValidatorTests.cs
-├── Mappers/
-│   └── UserMappingExtensionsTests.cs
-├── Validators/
-│   ├── CreateUserCommandValidatorTests.cs
-│   └── UpdateUserCommandValidatorTests.cs
-└── Domain/
-    ├── Entities/
-    │   └── UserTests.cs
-    └── ValueObjects/
-        └── EmailTests.cs
-```
 
-### Integration Tests (`tests/IntegrationTests/`)
+### Infrastructure Integration Tests (`tests/IntegrationTests/Infrastructure`)
 
-**Purpose**: Test infrastructure layer components with real dependencies.
+**Purpose**: 
+- Test infrastructure layer components with real dependencies.
+- Test API controlers
 
 **Target Components**:
 - Repository implementations
@@ -97,7 +76,7 @@ tests/UnitTests/
 
 **Example Structure**:
 ```
-tests/IntegrationTests/
+tests/Integration/Infrastructure
 ├── Repositories/
 │   ├── UserRepositoryIntegrationTests.cs
 │   └── OrderRepositoryIntegrationTests.cs
@@ -110,7 +89,7 @@ tests/IntegrationTests/
     └── DatabaseFixture.cs
 ```
 
-### E2E Tests (`tests/E2ETests/`)
+### API Integration Tests (`tests/Integration/Api`)
 
 **Purpose**: Test the full API request/response cycle through the HTTP layer.
 
@@ -142,90 +121,23 @@ tests/IntegrationTests/
 
 **Example Structure**:
 ```
-tests/E2ETests/
-├── Features/
-│   ├── UserManagementE2ETests.cs
-│   └── OrderProcessingE2ETests.cs
+tests/Integration/API
+├── Controllers/
+│   └── ApplicationsControllerTests.cs
 ├── Middleware/
-│   └── ExceptionHandlingMiddlewareE2ETests.cs
+│   └── ExceptionHandlingMiddlewareTests.cs
 ├── Authentication/
 │   └── JwtAuthenticationE2ETests.cs
-└── Fixtures/
-    └── CustomWebApplicationFactory.cs
+└── Mappers/
+    └── ApplicationMappingExtensionsTests.cs
 ```
-
-## Testing Tools Stack
-
-### Core Testing Frameworks
-- **xUnit 2.9.3+**: Primary testing framework for all test types
-  - Modern, extensible, and widely adopted in .NET
-  - Supports parallel test execution
-  - Rich ecosystem of extensions
-
-### Assertion Libraries
-- **Shouldly**: Fluent assertion library with readable error messages
-  - Example: `result.ShouldNotBeNull();`
-  - Example: `user.Name.ShouldBe("John Doe");`
-- **FluentAssertions**: Alternative with extensive assertion methods
-  - Example: `result.Should().NotBeNull();`
-  - Example: `user.Name.Should().Be("John Doe");`
-
-### Mocking Frameworks (Unit Tests)
-- **Moq**: Most popular mocking framework for .NET
-  ```csharp
-  var mockRepository = new Mock<IUserRepository>();
-  mockRepository.Setup(x => x.GetByIdAsync(userId))
-      .ReturnsAsync(user);
-  ```
-- **NSubstitute**: Alternative with cleaner syntax
-  ```csharp
-  var repository = Substitute.For<IUserRepository>();
-  repository.GetByIdAsync(userId).Returns(user);
-  ```
-
-### E2E Testing
-- **Microsoft.AspNetCore.Mvc.Testing**: For API integration tests
-  - Provides `WebApplicationFactory<TEntryPoint>`
-  - In-memory test server
-  - Configuration overrides
-  - Fast execution without network overhead
-
-### Integration Testing
-- **Testcontainers**: For integration tests requiring real databases
-  - Disposable, lightweight database containers
-  - Supports PostgreSQL, SQL Server, MySQL, MongoDB, etc.
-  - Automatically manages container lifecycle
-  - Ensures tests run against real database behavior
-  ```csharp
-  var container = new PostgreSqlBuilder()
-      .WithDatabase("testdb")
-      .WithUsername("test")
-      .WithPassword("test")
-      .Build();
-  ```
-
-### HTTP Mocking (Integration Tests)
-- **WireMock.Net**: For mocking external HTTP APIs
-  - Simulates HTTP responses without actual network calls
-  - Useful for testing external service integrations
-  ```csharp
-  var server = WireMockServer.Start();
-  server.Given(Request.Create().WithPath("/api/users"))
-      .RespondWith(Response.Create().WithStatusCode(200));
-  ```
 
 ## Test Naming Conventions
 
 ### Test Class Names
-- `{ComponentName}Tests` for unit tests
+- `{ComponentName}Tests`
   - Example: `CreateUserCommandHandlerTests`
   - Example: `UserValidatorTests`
-- `{ComponentName}IntegrationTests` for integration tests
-  - Example: `UserRepositoryIntegrationTests`
-  - Example: `DatabaseMigrationsIntegrationTests`
-- `{FeatureName}E2ETests` for E2E tests
-  - Example: `UserManagementE2ETests`
-  - Example: `OrderProcessingE2ETests`
 
 ### Test Method Names
 Use descriptive names that explain the scenario. Choose one convention and stick with it:
@@ -411,73 +323,21 @@ public class CreateUserCommandHandlerTests { }
 
 ## Coverage Goals
 
-- **Unit Tests**: Aim for 70-90% code coverage
+- **Unit Tests**: Aim for 90%+ code coverage
   - Focus on business logic, handlers, validators
   - Cover edge cases and error scenarios
 - **Integration Tests**: Cover all repository methods and database operations
   - Test CRUD operations
   - Test complex queries
   - Test transaction handling
-- **E2E Tests**: Cover all critical API endpoints and workflows
+- **API Tests**: Cover all API endpoints and workflows
   - Happy path scenarios
   - Common error scenarios (400, 404, 500)
   - Authentication/authorization flows
 
 **Important**: Coverage is a metric, not a goal. Focus on meaningful tests that provide confidence, not arbitrary percentages.
 
-## Test Pyramid Strategy
-
-Follow the test pyramid principle for optimal test distribution:
-
-```
-        /\
-       /E2E\      <- Few (10-20%)
-      /------\    Slow, brittle, high maintenance
-     /  Integ \   <- Some (20-30%)
-    /----------\  Moderate speed, some setup
-   /    Unit    \ <- Many (50-70%)
-  /--------------\ Fast, isolated, easy to maintain
-```
-
-**Distribution Guidelines**:
-- **50-70% Unit Tests**: Fast, isolated, cover business logic
-- **20-30% Integration Tests**: Verify infrastructure and data access
-- **10-20% E2E Tests**: Validate critical API workflows
-
-## CI/CD Integration
-
-### Test Execution Order
-Tests should be run in the following order in CI/CD pipelines:
-1. **Unit Tests** (fastest, fail fast) - Run on every commit
-2. **Integration Tests** (slower, require Docker) - Run on pull requests
-3. **E2E Tests** (moderate speed) - Run before deployment
-
-### Pipeline Optimization
-```yaml
-# Example GitHub Actions workflow
-- name: Run Unit Tests
-  run: dotnet test tests/UnitTests --no-build --verbosity normal
-
-- name: Run Integration Tests
-  run: dotnet test tests/IntegrationTests --no-build --verbosity normal
-  # Requires Docker to be available
-
-- name: Run E2E Tests
-  run: dotnet test tests/E2ETests --no-build --verbosity normal
-
-- name: Generate Coverage Report
-  run: |
-    dotnet test --collect:"XPlat Code Coverage"
-    reportgenerator -reports:**/coverage.cobertura.xml -targetdir:coverage -reporttypes:Html
-```
-
-### Prerequisites
-- **Unit Tests**: No prerequisites
-- **Integration Tests**: Docker must be running (for Testcontainers)
-- **E2E Tests**: No prerequisites (uses in-memory server)
-
 ## Test Data Management
-
 ### Unit Tests
 - Use hardcoded test data or builders
 - Keep data minimal and focused on the test scenario
@@ -505,7 +365,7 @@ private async Task SeedTestDataAsync()
 }
 ```
 
-### E2E Tests
+### API Tests
 - Use API calls to set up test data (when needed)
 - Clean up data in test teardown
 - Use unique identifiers (GUIDs) to avoid conflicts
@@ -727,14 +587,14 @@ public async Task Should_CreateUser_When_ValidEmail(string email)
 Complete example of a well-organized C# API test project:
 
 ```
-YourApi.sln
+YourApi.slnx
 ├── src/
 │   ├── YourApi/                    # API layer
 │   ├── YourApi.Application/        # Application layer (handlers, validators)
 │   ├── YourApi.Domain/             # Domain layer (entities, value objects)
 │   └── YourApi.Infrastructure/     # Infrastructure layer (repositories, DbContext)
 └── tests/
-    ├── UnitTests/
+    ├── Unit/
     │   ├── YourApi.UnitTests.csproj
     │   ├── Features/
     │   │   └── Users/
@@ -747,50 +607,48 @@ YourApi.sln
     │   │   └── UserMappingExtensionsTests.cs
     │   └── Builders/
     │       └── UserBuilder.cs
-    ├── IntegrationTests/
-    │   ├── YourApi.IntegrationTests.csproj
-    │   ├── Repositories/
-    │   │   └── UserRepositoryIntegrationTests.cs
-    │   ├── Persistence/
-    │   │   └── DatabaseMigrationsTests.cs
-    │   └── Fixtures/
-    │       └── DatabaseFixture.cs
-    └── E2ETests/
-        ├── YourApi.E2ETests.csproj
-        ├── Features/
-        │   └── UserManagementE2ETests.cs
-        └── Fixtures/
-            └── CustomWebApplicationFactory.cs
+    ├── Integration/
+        ├──Infastracture/
+        │   ├── YourApi.Integration.InfastractureTests.csproj
+        │   ├── Repositories/
+        │   │   └── UserRepositoryIntegrationTests.cs
+        │   ├── Persistence/
+        │   │   └── DatabaseMigrationsTests.cs
+        │   └── Fixtures/
+        │       └── DatabaseFixture.cs
+        └──API/
+            ├── YourApi.Integration.APITests.csproj
+            ├── Controllers/
+            │   └── UserManagementControllerAPITests.cs
+            └── Middlewares/
+                └── CustomMiddlewareTests.cs
 ```
 
 ## Required NuGet Packages
+Rely solely on [Microsoft Testing Platform support](https://learn.microsoft.com/dotnet/core/testing/unit-testing-platform-intro)
 
 ### All Test Projects
 ```xml
-<PackageReference Include="xunit" Version="2.9.3" />
-<PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
-<PackageReference Include="Shouldly" Version="4.2.1" />
-<PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.0" />
+<PackageReference Include="xunit" />
+<PackageReference Include="Shouldly" />
 ```
 
 ### Unit Tests
 ```xml
-<PackageReference Include="Moq" Version="4.20.70" />
-<!-- OR -->
-<PackageReference Include="NSubstitute" Version="5.1.0" />
+<PackageReference Include="Moq" />
 ```
 
 ### Integration Tests
 ```xml
-<PackageReference Include="Testcontainers.PostgreSql" Version="3.10.0" />
+<PackageReference Include="Testcontainers.PostgreSql"/>
 <!-- OR for SQL Server -->
-<PackageReference Include="Testcontainers.MsSql" Version="3.10.0" />
-<PackageReference Include="WireMock.Net" Version="1.6.6" />
+<PackageReference Include="Testcontainers.MsSql"  />
+<PackageReference Include="WireMock.Net" />
 ```
 
-### E2E Tests
+### API Tests
 ```xml
-<PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.0" />
+<PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
 ```
 
 ## Related Resources

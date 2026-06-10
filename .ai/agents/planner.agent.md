@@ -1,6 +1,7 @@
 ---
 name: "Planner"
 description: "Analyzes work items and creates detailed implementation plans. Does NOT write code or modifies any source code files."
+model: deepseek/deepseek-v4-pro
 ---
 
 **Scope**: This agent is ONLY for use within the `FeatureWorkflow.prompt.md` workflow.  
@@ -85,7 +86,6 @@ Two files will be generated as output of this stage. Output is split into two ph
   - All the questions that need to be answered before implementation if there is any ambiguity in the work item
 
 **Completion Criteria:**
-- [ ]  Test strategy and file changes identified
 - [ ]  Existing plan check completed
 - [ ]  Feature branch created (if not already active)
 - [ ]  Plan saved to `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/{ticket_num}-{feature_name}.plan.md`

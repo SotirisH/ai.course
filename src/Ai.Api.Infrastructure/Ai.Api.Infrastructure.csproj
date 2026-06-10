@@ -1,8 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <ItemGroup>
-        <ProjectReference Include="..\Ai.Api.Application\Ai.Api.Application.csproj"/>
-        <ProjectReference Include="..\Ai.Api.Domain\Ai.Api.Domain.csproj"/>
+        <ProjectReference Include="..\..\src\Ai.Api.Application\Ai.Api.Application.csproj"/>
+        <ProjectReference Include="..\..\src\Ai.Api.Domain\Ai.Api.Domain.csproj"/>
     </ItemGroup>
 
     <ItemGroup>
@@ -15,5 +15,11 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
     </PropertyGroup>
+
+    <ItemGroup>
+        <InternalsVisibleTo Include="Ai.Api.UnitTests"/>
+        <InternalsVisibleTo Include="Ai.Api.IntegrationTests"/>
+        <InternalsVisibleTo Include="Ai.Api.E2ETests"/>
+    </ItemGroup>
 
 </Project>

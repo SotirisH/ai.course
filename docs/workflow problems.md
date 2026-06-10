@@ -180,3 +180,37 @@ User response: use forward slash consistently
 | 19 | 🔵 Duplicate    | 4 files                                                       | Test layer definitions repeated                  | Canonical in`testing-structure.md` only       |
 
 ---
+
+
+
+## CI/CD Integration
+
+### Test Execution Order
+Tests should be run in the following order in CI/CD pipelines:
+1. **Unit Tests** (fastest, fail fast) - Run on every commit
+2. **Integration Tests** (slower, require Docker) - Run on pull requests
+3. **API Tests** (moderate speed) - Run before deployment
+
+### Pipeline Optimization
+```yaml
+# Example GitHub Actions workflow
+- name: Run Unit Tests
+  run: dotnet test tests/UnitTests --no-build --verbosity normal
+
+- name: Run Integration Tests
+  run: dotnet test tests/IntegrationTests --no-build --verbosity normal
+  # Requires Docker to be available
+
+- name: Run E2E Tests
+  run: dotnet test tests/E2ETests --no-build --verbosity normal
+
+- name: Generate Coverage Report
+  run: |
+    dotnet test --collect:"XPlat Code Coverage"
+    reportgenerator -reports:**/coverage.cobertura.xml -targetdir:coverage -reporttypes:Html
+```
+
+### Prerequisites
+- **Unit Tests**: No prerequisites
+- **Integration Tests**: Docker must be running (for Testcontainers)
+- **E2E Tests**: No prerequisites (uses in-memory server)

@@ -1,4 +1,4 @@
-# Overview
+~~# Overview
 
 This document outlines the technology stack used in our projects, including programming languages, frameworks, libraries, and tools.
 The chosen tech stack is designed to ensure scalability, maintainability, and efficiency in our development processes.
@@ -37,6 +37,54 @@ The chosen tech stack is designed to ensure scalability, maintainability, and ef
 ## Database
 - PostgreSQL is the default database provider. Use `Npgsql.EntityFrameworkCore.PostgreSQL` for EF Core integration. Only use a different provider if explicitly specified in the story requirements.
 
-## Testing
+## Testing Tools Stack
 
-See `.ai/rules/testing-strategy.md` for the canonical testing reference — test layer definitions, folder structure, tools, naming conventions, and running tests.
+### Core Testing Frameworks
+- **xUnit+**: Primary testing framework for all test types
+- Modern, extensible, and widely adopted in .NET
+- Supports parallel test execution
+- Rich ecosystem of extensions
+
+### Assertion Libraries
+- **Shouldly**: Fluent assertion library with readable error messages
+    - Example: `result.ShouldNotBeNull();`
+    - Example: `user.Name.ShouldBe("John Doe");`
+
+### Mocking Frameworks (Unit Tests)
+- **Moq**: Most popular mocking framework for .NET
+  ```csharp
+  var mockRepository = new Mock<IUserRepository>();
+  mockRepository.Setup(x => x.GetByIdAsync(userId))
+      .ReturnsAsync(user);
+  ```
+
+### Test server
+- **Microsoft.AspNetCore.Mvc.Testing**: For API integration tests
+- Provides `WebApplicationFactory<TEntryPoint>`
+- In-memory test server
+- Configuration overrides
+- Fast execution without network overhead
+
+### Integration Testing
+- **Testcontainers**: For integration tests requiring real databases
+- Disposable, lightweight database containers
+- Supports PostgreSQL, SQL Server, MySQL, MongoDB, etc.
+- Automatically manages container lifecycle
+- Ensures tests run against real database behavior
+  ```csharp
+  var container = new PostgreSqlBuilder()
+      .WithDatabase("testdb")
+      .WithUsername("test")
+      .WithPassword("test")
+      .Build();
+  ```
+
+### HTTP Mocking (Integration Tests)
+- **WireMock.Net**: For mocking external HTTP APIs
+- Simulates HTTP responses without actual network calls
+- Useful for testing external service integrations
+  ```csharp
+  var server = WireMockServer.Start();
+  server.Given(Request.Create().WithPath("/api/users"))
+      .RespondWith(Response.Create().WithStatusCode(200));
+  ```

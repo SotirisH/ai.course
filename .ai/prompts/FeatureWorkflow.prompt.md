@@ -19,18 +19,24 @@ For each bullet point:
 - **Work Item File**:`{work_item_file}`
 
 # Development Process
-Every work item follows a structured stage process to ensure quality, consistency, and continuous improvement.
+Every work item follows a structured 4-stage process to ensure quality, consistency, and continuous improvement.
+Each stage is owned by a dedicated agent running on its own LLM model.
 The coding assistant and user must both understand and follow this process rigorously.
 
 ## Process Overview
-1. **PLAN**: Analyze the work item, break it down into clear steps, and create a detailed implementation plan. This stage focuses on understanding the requirements and designing a solution before writing any code.
-2. **IMPLEMENT**: Read the plan produced in Stage 1 and implement the feature in code, following the project's coding standards and architecture rules.
+1. **FEATURE PLAN**: Analyze the work item, break it down into clear steps, and create a detailed implementation plan. No code is written.
+2. **FEATURE IMPLEMENTATION**: Read the plan from Stage 1 and implement the feature in code across all layers.
+3. **TEST PLANNING**: Analyze the work item and implementation plan to produce a complete test strategy with Gherkin scenarios and a mapped test file list. No test code is written.
+4. **TEST IMPLEMENTATION**: Read the test plan from Stage 3 and implement all test scenarios as C# test code.
 
 ### Stage Definitions
-These are the stages you need to follow in order to implement a feture. It is IMPORTANT to ask the user to review the output at the end of each stage. 
-You proceed to the next stage only if you have the explicit user's approval.
+Each stage is delegated to a dedicated agent via `run_subagent`. After each stage completes, present the output to the user and wait for **explicit approval** before proceeding to the next stage.
 
-# Stage 1: PLAN
+---
+
+# Stage 1: FEATURE PLAN
+**Agent**: `Planner` | **Model**: `deepseek/deepseek-v4-pro`
+
 Delegate planning to the **Planner** agent. Use `run_subagent` with `agentName: "planner"` and pass `workItemFile:{workspace_root}/{work_item_file}` in the task.
 
 The Planner agent will:
@@ -42,11 +48,15 @@ The Planner agent will:
 
 After the Planner agent completes, **extract the metadata variables** by reading the plan file at `{workspace_root}/.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/{ticket_num}-{feature_name}.plan.md`:
 - Read the `## Metadata` section to capture `{ticket_num}`, `{feature_name}`, and `{work_item_type}` values.
-- Store these values for use in Stage 2 and Stage 3 path constructions.
+- Store these values for use in all subsequent stages.
 
-After extraction, review the Planner's output with the user. Only proceed to the next stage with the user's explicit approval.
+⛔ **STOP — Present Stage 1 output to the user. Only proceed to Stage 2 with explicit user approval.**
 
-# Stage 2: IMPLEMENT
+---
+
+# Stage 2: FEATURE IMPLEMENTATION
+**Agent**: `C#Coder` | **Model**: `deepseek/deepseek-v4-flash`
+
 Delegate implementation to the **C#Coder** agent. Use `run_subagent` with `agentName: "C#Coder"` and pass `implementationPlan:{workspace_root}/.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/{ticket_num}-{feature_name}.plan.md` in the task.
 
 The C#Coder agent will:
@@ -55,21 +65,39 @@ The C#Coder agent will:
 - Produce a **Compliance Checklist** saved to `{workspace_root}/.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/compliance-checklist.md`
 - Produce a **Reflect & Adapt Document** saved to `{workspace_root}/.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/Implementation.reflections.md`
 
-After the C#Coder agent completes, review its output with the user. Only proceed to the next stage with the user's explicit approval.
+⛔ **STOP — Present Stage 2 output to the user. Only proceed to Stage 3 with explicit user approval.**
 
-# Stage 3: QA
-Delegate QA planning and test code generation to the **QA** agent. Use `run_subagent` with `agentName: "QA"` and pass:
+---
+
+# Stage 3: TEST PLANNING
+**Agent**: `TestPlanner` | **Model**: `deepseek/deepseek-v4-pro`
+
+Delegate test planning to the **TestPlanner** agent. Use `run_subagent` with `agentName: "TestPlanner"` and pass:
 - `workItemFile:{workspace_root}/{work_item_file}`
 - `implementationPlan:{workspace_root}/.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/{ticket_num}-{feature_name}.plan.md`
 
+The TestPlanner agent will:
+- Analyze the work item requirements and the full implementation plan
+- Identify feature types, risks, and applicable test layers
+- Generate Gherkin scenarios (positive, negative, edge cases, mapping, DB)
+- Map every scenario to a test file, class name, and method name
+- Produce a **Test Plan Document** saved to `{workspace_root}/.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/{ticket_num}-{feature_name}.qa-plan.md`
+- Produce a **Reflect & Adapt Document** saved to `{workspace_root}/.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/qa.plan.reflections.md`
 
-After the QA agent completes, review its output with the user.
- 
-The QA agent will:
-- Analyze the work item requirements and implementation plan
-- Produce a **Test Strategy Plan** saved to `{workspace_root}/.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/{ticket_num}-{feature_name}.qa-plan.md`
-- Generate test code (unit, integration, E2E) based on the plan
+⛔ **STOP — Present Stage 3 output to the user. Only proceed to Stage 4 with explicit user approval.**
+
+---
+
+# Stage 4: TEST IMPLEMENTATION
+**Agent**: `TestCoder` | **Model**: `deepseek/deepseek-v4-flash`
+
+Delegate test code generation to the **TestCoder** agent. Use `run_subagent` with `agentName: "TestCoder"` and pass:
+- `testPlan:{workspace_root}/.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/{ticket_num}-{feature_name}.qa-plan.md`
+
+The TestCoder agent will:
+- Read the test plan and derive the implementation plan path from its `## Metadata` section
+- Implement all Gherkin scenarios as C# test code using the Test File Map from the test plan
 - Produce a **QA Compliance Checklist** saved to `{workspace_root}/.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/qa-compliance-checklist.md`
-- Produce a **Reflect & Adapt Document** saved to `{workspace_root}/.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/qa.reflections.md`
+- Produce a **Reflect & Adapt Document** saved to `{workspace_root}/.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/qa.code.reflections.md`
 
-After the QA agent completes, review its output with the user.
+⛔ **STOP — Present Stage 4 output to the user. The workflow is complete.`
