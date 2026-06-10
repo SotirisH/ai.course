@@ -6,7 +6,7 @@ This document defines the development workflow, and commit practices.
 - **Cache the workspace root path**: The workspace root is the absolute path shown in `<workspace_info>`.
 Store this as `{workspace_root}` and use it to resolve ALL relative paths to absolute paths before passing them to any tool 
 (especially `run_subagent`). For example, if `{workspace_root}` is `I:\GitRepo\ai.course` and a relative path is `.ai/memory/foo.md`, 
-resolve it to `{workspace_root}\.ai\memory\foo.md`.
+resolve it to `{workspace_root}/.ai/memory/foo.md`.
 - You must then collect all user inputs from the `User Input` section below. Use the `ask_questions` tool to collect the required data. 
 For each bullet point:
   1. ASK the user to provide the value for the **Key** (bolded text before the colon)
@@ -31,24 +31,45 @@ These are the stages you need to follow in order to implement a feture. It is IM
 You proceed to the next stage only if you have the explicit user's approval.
 
 # Stage 1: PLAN
-Delegate planning to the **Planner** agent. Use `run_subagent` with `agentName: "planner"` and pass `workItemFile:{workspace_root}\{work_item_file}` in the task.
+Delegate planning to the **Planner** agent. Use `run_subagent` with `agentName: "planner"` and pass `workItemFile:{workspace_root}/{work_item_file}` in the task.
 
 The Planner agent will:
 - Extract metadata (`ticket_num`, `feature_name`, `work_item_type`) and check for existing plans
 - Analyze the work item story & acceptance criteria
 - Identify required file changes across Domain, Application, Infrastructure, and API layers
-- Produce a **Plan Document** saved to `{workspace_root}\.ai\memory\episodic\{work_item_type}\{ticket_num}-{feature-name}\{ticket_num}-{feature-name}.plan.md`
-- Produce a **Reflect & Adapt Document** saved to `{workspace_root}\.ai\memory\episodic\{work_item_type}\{ticket_num}-{feature-name}\plan.reflections.md`
+- Produce a **Plan Document** saved to `{workspace_root}/.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/{ticket_num}-{feature_name}.plan.md`
+- Produce a **Reflect & Adapt Document** saved to `{workspace_root}/.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/plan.reflections.md`
 
-After the Planner agent completes, review its output with the user. Only proceed to the next stage with the user's explicit approval.
+After the Planner agent completes, **extract the metadata variables** by reading the plan file at `{workspace_root}/.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/{ticket_num}-{feature_name}.plan.md`:
+- Read the `## Metadata` section to capture `{ticket_num}`, `{feature_name}`, and `{work_item_type}` values.
+- Store these values for use in Stage 2 and Stage 3 path constructions.
+
+After extraction, review the Planner's output with the user. Only proceed to the next stage with the user's explicit approval.
 
 # Stage 2: IMPLEMENT
-Delegate implementation to the **C#Coder** agent. Use `run_subagent` with `agentName: "C#Coder"` and pass `implementationPlan:{workspace_root}\.ai\memory\episodic\{work_item_type}\{ticket_num}-{feature-name}\{ticket_num}-{feature-name}.plan.md` in the task.
+Delegate implementation to the **C#Coder** agent. Use `run_subagent` with `agentName: "C#Coder"` and pass `implementationPlan:{workspace_root}/.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/{ticket_num}-{feature_name}.plan.md` in the task.
 
 The C#Coder agent will:
 - Analyze the implementation plan for completeness and clarity
 - Implement the feature across all required layers (Domain, Application, Infrastructure, API)
-- Produce a **Compliance Checklist** saved to `{workspace_root}\.ai\memory\episodic\{work_item_type}\{ticket_num}-{feature-name}\compliance-checklist.md`
-- Produce a **Reflect & Adapt Document** saved to `{workspace_root}\.ai\memory\episodic\{work_item_type}\{ticket_num}-{feature-name}\Implementation.reflections.md`
+- Produce a **Compliance Checklist** saved to `{workspace_root}/.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/compliance-checklist.md`
+- Produce a **Reflect & Adapt Document** saved to `{workspace_root}/.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/Implementation.reflections.md`
 
 After the C#Coder agent completes, review its output with the user. Only proceed to the next stage with the user's explicit approval.
+
+# Stage 3: QA
+Delegate QA planning and test code generation to the **QA** agent. Use `run_subagent` with `agentName: "QA"` and pass:
+- `workItemFile:{workspace_root}/{work_item_file}`
+- `implementationPlan:{workspace_root}/.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/{ticket_num}-{feature_name}.plan.md`
+
+
+After the QA agent completes, review its output with the user.
+ 
+The QA agent will:
+- Analyze the work item requirements and implementation plan
+- Produce a **Test Strategy Plan** saved to `{workspace_root}/.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/{ticket_num}-{feature_name}.qa-plan.md`
+- Generate test code (unit, integration, E2E) based on the plan
+- Produce a **QA Compliance Checklist** saved to `{workspace_root}/.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/qa-compliance-checklist.md`
+- Produce a **Reflect & Adapt Document** saved to `{workspace_root}/.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/qa.reflections.md`
+
+After the QA agent completes, review its output with the user.

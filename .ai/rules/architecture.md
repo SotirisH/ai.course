@@ -22,7 +22,20 @@ It serves as a guide for structuring projects to enhance scalability and adaptab
 - **Repository Pattern**: Abstracts data access to promote testability. Repositories accept and return DTOs — never domain entities.
 - **Service Layer**: Encapsulates business logic, ensuring clear separation from API controllers.
 - **Middleware Integration**: Implements consistent error management and logging.
-- **Testing Practices**: Emphasizes unit and integration tests for code quality.
+- **Testing Practices**: Emphasizes unit, integration, and E2E tests for code quality.
+
+### Testing Structure
+
+Tests are organized in a separate `tests/` folder at the solution level, with clear separation by test type.
+See `.ai/rules/testing-strategy.md` for the canonical testing reference, including test layer definitions, folder structure, tools, and naming conventions.
+
+**Testing Tools:**
+
+- **xUnit**: Primary testing framework for all test types
+- **Shouldly**: Fluent assertion library for readable test assertions
+- **Microsoft.AspNetCore.Mvc.Testing**: For E2E API integration tests
+- **Testcontainers**: For integration tests requiring real PostgreSQL instances
+- **MockHttp**: For mocking external HTTP API calls in unit tests
 
 ## Core Layers
 

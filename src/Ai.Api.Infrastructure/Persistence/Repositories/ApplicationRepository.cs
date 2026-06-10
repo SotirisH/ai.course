@@ -28,7 +28,7 @@ public class ApplicationRepository(AppDbContext dbContext) : IApplicationReposit
     public async Task<ApplicationDto> AddAsync(CreateApplicationDto dto,
         CancellationToken cancellationToken = default)
     {
-        var entity = dto.ToEntity();
+        Entities.Application entity = dto.ToEntity();
 
         await dbContext.Applications.AddAsync(entity, cancellationToken);
 

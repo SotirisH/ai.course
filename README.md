@@ -102,6 +102,11 @@ config-service/
 │   ├── ConfigService.Application/  # Business logic layer
 │   ├── ConfigService.Domain/       # Domain entities and exceptions
 │   └── ConfigService.Infrastructure/ # Data access layer
+├── tests/
+│   ├── UnitTests/                  # Unit tests (handlers, validators, mappers)
+│   ├── IntegrationTests/           # Integration tests (repositories, DbContext)
+│   └── E2ETests/                   # API integration tests (WebApplicationFactory)
+├── docs/                           # Feature documentation
 ├── .env                            # Environment variables (not in git)
 ├── .env.example                    # Example environment variables
 ├── .gitignore                      # Git ignore file
@@ -163,4 +168,3 @@ dotnet ef database update <MigrationName> --project src/ConfigService.Infrastruc
 ## License
 
 This project is part of an AI course module.
-

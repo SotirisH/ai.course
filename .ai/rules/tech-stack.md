@@ -38,4 +38,5 @@ The chosen tech stack is designed to ensure scalability, maintainability, and ef
 - PostgreSQL is the default database provider. Use `Npgsql.EntityFrameworkCore.PostgreSQL` for EF Core integration. Only use a different provider if explicitly specified in the story requirements.
 
 ## Testing
-- Shouldly: A popular validation library for .NET that provides a fluent API for defining validation rules.
+
+See `.ai/rules/testing-strategy.md` for the canonical testing reference — test layer definitions, folder structure, tools, naming conventions, and running tests.

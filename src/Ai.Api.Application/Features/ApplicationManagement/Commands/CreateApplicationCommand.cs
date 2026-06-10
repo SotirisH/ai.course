@@ -14,7 +14,7 @@ public class CreateApplicationCommandHandler(IApplicationRepository repository)
         CreateApplicationCommand command,
         CancellationToken cancellationToken)
     {
-        var dto = command.ToDto();
+        CreateApplicationDto dto = command.ToDto();
 
         return await repository.AddAsync(dto, cancellationToken);
     }

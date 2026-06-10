@@ -111,4 +111,3 @@ The `ExecutionResult<TResult>` class must encapsulate the result of an activity 
 - Exception logging (deferred to RS-003).
 - Activity subscriptions / saga-based routing slip host.
 - Message transport (the routing slip and activities are modeled as in-process contracts for now).
-
