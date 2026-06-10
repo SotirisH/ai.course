@@ -54,8 +54,6 @@ IMPORTANT: If you fail to load any of the above files then STOP, state which fil
 ## After Implementation
 - Create a **QA Compliance Checklist** verifying:
   - All Gherkin scenarios have corresponding test methods
-  - No test method exceeds 50 lines
-  - No test file exceeds 300 lines
   - Naming conventions followed
 - Save to: `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/qa-compliance-checklist.md`
 
