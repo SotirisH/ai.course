@@ -1,5 +1,6 @@
 using Ai.Api.Application.Features.ApplicationManagement.DTOs;
 using Ai.Api.Application.Interfaces.Repositories;
+using Ai.Api.Infrastructure.Mappers;
 using Ai.Api.Infrastructure.Persistence.Context;
 
 namespace Ai.Api.Infrastructure.Persistence.Repositories;
