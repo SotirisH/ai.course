@@ -3,17 +3,7 @@ This document defines the development workflow, and commit practices.
 
 # Agent Instructions
 - You must first ensure that the "AGENTS.md" file is loaded into your memory.
-- **Cache the workspace root path**: The workspace root is the absolute path shown in `<workspace_info>`.
-Store this as `{workspace_root}` and use it to resolve ALL relative paths to absolute paths before passing them to any tool 
-(especially `run_subagent`). For example, if `{workspace_root}` is `I:\GitRepo\ai.course` and a relative path is `.ai/memory/foo.md`, 
-resolve it to `{workspace_root}/.ai/memory/foo.md`.
-- You must then collect all user inputs from the `User Input` section below. Use the `ask_questions` tool to collect the required data. 
-For each bullet point:
-  1. ASK the user to provide the value for the **Key** (bolded text before the colon)
-  2. Wait for the user's response for each key individually
-  3. Bolded text before colon = **Key** to collect from user
-  4. Text in curly braces `{variable_name}` = variable to store the Key's value for later use
-  5. Do not proceed further until all User Input values are collected. Once stored, you can reference values by their Key name in later steps.
+- You must then collect all user inputs from the `User Input` section below. Use the `ask_questions` tool to collect the required data.
 
 # User Input:
 - **Work Item File**:`{work_item_file}`

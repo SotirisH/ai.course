@@ -1,7 +1,11 @@
 ---
 name: "Planner"
 description: "Analyzes work items and creates detailed implementation plans. Does NOT write code or modifies any source code files."
-model: deepseek/deepseek-v4-pro
+llm:
+    provider: openai-compatible
+    base_url: "https://openrouter.ai/api/v1"
+    model: "deepseek/deepseek-v4-pro"
+    api_key: "${OPENROUTER_API_KEY}"
 ---
 
 **Scope**: This agent is ONLY for use within the `FeatureWorkflow.prompt.md` workflow.  

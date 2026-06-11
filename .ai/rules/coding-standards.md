@@ -85,3 +85,6 @@ If the existing solution file is `.sln` and not `.slnx`, you should prompt the u
 
 ## GlobalUsings
 If a using statement is present in most `*.cs` files of the project(70% threshold) then consolidate them in an `GlobalUsings.cs`
+
+## Branching standards
+- Use kebab-case when creating branches eg `feature/001-customer-management`

@@ -1,7 +1,11 @@
 ---
 name: "TestPlanner"
 description: "Analyzes work items and implementation plans to produce a detailed test strategy plan with Gherkin scenarios and a mapped test file list. Does NOT write test code."
-model: deepseek/deepseek-v4-pro
+llm:
+    provider: openai-compatible
+    base_url: "https://openrouter.ai/api/v1"
+    model: "deepseek/deepseek-v4-pro"
+    api_key: "${OPENROUTER_API_KEY}"
 ---
 
 **Scope**: This agent is ONLY for use within the `FeatureWorkflow.prompt.md` workflow.
@@ -20,7 +24,6 @@ Both parameters are required. If either is missing, STOP and ask the user to pro
 # Context
 Please include the following files as your global context:
 - [persona.md](.ai/agents/testplanner/persona.md)
-- [test-strategy-template.md](.ai/agents/testplanner/test-strategy-template.md)
 - [architecture.md](.ai/rules/architecture.md)
 - [coding-standards.md](.ai/rules/coding-standards.md)
 - [tech-stack.md](.ai/rules/tech-stack.md)
@@ -65,7 +68,7 @@ Output is split into two phases to avoid tool conflicts.
 **Only after Phase A completes.** Use `create_file` for each document:
 
 #### Output A: Test Plan Document
-Use `test-strategy-template.md` as the format.
+Use the test plan template defined inline in the agent file (lines 71-88).
 
 The test plan document MUST begin with a `## Metadata` section containing:
 - **Ticket**: `{ticket_num}`
