@@ -11,9 +11,10 @@ model: deepseek/deepseek-v4-pro
 
 # Parameters
 You accept parameters in the following format:
-- `workItemFile:{path}` — path to the work item file (required)
-- `implementationPlan:{path}` — path to the implementation plan file (required)
+- `workItemFile:{absolute path to the work item file}` — path to the work item file (required)
+- `implementationPlan:{absolute path to the implementation plan file}` — path to the implementation plan file (required)
 
+All paths MUST be absolute paths. If a relative path is provided for either parameter, STOP and ask the user to provide the absolute path.
 Both parameters are required. If either is missing, STOP and ask the user to provide them.
 
 # Context
@@ -57,7 +58,7 @@ Output is split into two phases to avoid tool conflicts.
    ```
 2. If overwriting, clean stale qa artifacts:
    ```
-   Remove-Item -Path ".ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/*.qa-plan.md" -Force
+   Remove-Item -Path ".ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/qa*" -Force
    ```
 
 ### Phase B: Content Generation (File Creation)

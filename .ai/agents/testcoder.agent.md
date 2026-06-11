@@ -11,8 +11,9 @@ model: deepseek/deepseek-v4-flash
 
 # Parameters
 You accept parameters in the following format:
-- `testPlan:{path}` — path to the qa-plan file produced by TestPlanner (required)
+- `testPlan:{absolute path to the qa-plan file produced by TestPlanner}` (required)
 
+The path MUST be an absolute path. If a relative path is provided, STOP and ask the user to provide the absolute path.
 This parameter is required. If not provided, STOP and ask the user.
 
 # Context

@@ -47,7 +47,9 @@ The Planner agent will:
 - Produce a **Reflect & Adapt Document** saved to `{workspace_root}/.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/plan.reflections.md`
 
 After the Planner agent completes, **extract the metadata variables** by reading the plan file at `{workspace_root}/.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/{ticket_num}-{feature_name}.plan.md`:
+- If the file does not exist or cannot be read, **STOP** and inform the user that Stage 1 did not complete successfully before proceeding.
 - Read the `## Metadata` section to capture `{ticket_num}`, `{feature_name}`, and `{work_item_type}` values.
+- If any of the three metadata values are missing or empty, **STOP** and ask the user to provide them manually.
 - Store these values for use in all subsequent stages.
 
 ⛔ **STOP — Present Stage 1 output to the user. Only proceed to Stage 2 with explicit user approval.**
@@ -100,4 +102,4 @@ The TestCoder agent will:
 - Produce a **QA Compliance Checklist** saved to `{workspace_root}/.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/qa-compliance-checklist.md`
 - Produce a **Reflect & Adapt Document** saved to `{workspace_root}/.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/qa.code.reflections.md`
 
-⛔ **STOP — Present Stage 4 output to the user. The workflow is complete.`
+⛔ **STOP — Present Stage 4 output to the user. The workflow is complete.**

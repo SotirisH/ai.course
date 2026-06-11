@@ -10,7 +10,8 @@ model: deepseek/deepseek-v4-pro
 > *"I am the Planner agent. I only operate within the Feature Workflow. Please use the FeatureWorkflow.prompt.md prompt."*
  
 # Parameters
-You accept parameters in the following format: workItemFile:{path to the work item file}.
+You accept parameters in the following format: `workItemFile:{absolute path to the work item file}`.
+The path MUST be an absolute path. If a relative path is provided, STOP and ask the user to provide the absolute path.
 This parameter is required. If the user hasn't provided it, you should ask them to do so.
 
 # Context
@@ -38,7 +39,7 @@ what components you will need to create or modify, and how you will ensure that 
      - If "Keep existing plan": Skip remaining PLAN steps and output the existing plan as the response.
      - If "Update" or "Overwrite": **Clean the target directory first** by running `Remove-Item -Path ".ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/*.md" -Force` via terminal. This prevents stale artifacts and avoids `create_file` overwrite conflicts. Then proceed to step 3.
    - (d) If no matching plan file exists → proceed to Step 3.
-3. Read the "Story" & acceptance criteria from `{work_item_type}` in `{workItemFile}`
+3. Read the "Story" & acceptance criteria from `{workItemFile}`
    - *Error handling*: If `{work_item_type}` is invalid or not found, ask the user to clarify.
    - **Spec Consistency Check**: Compare the story text, acceptance criteria, and model definitions for contradictions. Flag any mismatches (e.g., fields mentioned in criteria but missing from model, endpoints listed in story but omitted from criteria). If found, include them in the plan as **Spec Issues** and as open Questions for user clarification.
 4. Identify required file changes across layers:
@@ -63,7 +64,25 @@ Two files will be generated as output of this stage. Output is split into two ph
    Remove-Item -Path ".ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/*" -Force
    ```
    This ensures the target directory is clean before writing, avoiding `create_file` overwrite errors and old-plan confusion.
-3. Create the feature branch and commit the empty directory structure.
+3. Create the feature branch (if not already on it) and make an initial commit:
+   - Branch naming convention: `feature/{ticket_num}-{feature_name}` (e.g., `feature/ABC-123-application-management`)
+   - Check if the branch already exists:
+     ```
+     git branch --list "feature/{ticket_num}-{feature_name}"
+     ```
+   - If it does **not** exist, create and switch to it:
+     ```
+     git checkout -b feature/{ticket_num}-{feature_name}
+     ```
+   - If it already exists, switch to it:
+     ```
+     git checkout feature/{ticket_num}-{feature_name}
+     ```
+   - Stage the new directory and make an initial commit:
+     ```
+     git add .ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/
+     git commit -m "chore({ticket_num}): initialise plan directory for {feature_name}"
+     ```
 
 ### Phase B: Content Generation (File Creation)
 **Only after Phase A completes.** Use `create_file` for each document:
@@ -71,7 +90,8 @@ Two files will be generated as output of this stage. Output is split into two ph
 - Reflections document → `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/plan.reflections.md`
 
 #### **Output A**: Plan Document
-- Format: `{work_item_type}/{ticket_num}-{feature_name}.plan.md` (derive {feature_name} from the work item's story title, e.g., "Application Management" → "application-management")
+- Format: `{work_item_type}/{ticket_num}-{feature_name}.plan.md`
+  - `{feature_name}` is the value extracted from the work item's `## Metadata` section in Step 1. It must already be present there. If it is missing, STOP and ask the user to add it to the work item file before proceeding.
 - The plan document MUST begin with a `## Metadata` section containing:
   - **Ticket**: `{ticket_num}`
   - **Feature Name**: `{feature_name}`
@@ -87,9 +107,9 @@ Two files will be generated as output of this stage. Output is split into two ph
 
 **Completion Criteria:**
 - [ ]  Existing plan check completed
-- [ ]  Feature branch created (if not already active)
+- [ ]  Feature branch `feature/{ticket_num}-{feature_name}` created or checked out
 - [ ]  Plan saved to `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/{ticket_num}-{feature_name}.plan.md`
-- [ ]  Plan committed to feature branch
+- [ ]  Plan committed to feature branch `feature/{ticket_num}-{feature_name}`
 
 #### **Output B**: Reflect & Adapt Document
 Use the template at `.ai/agents/shared/reflect-adapt-template.md` to structure your assessment.
@@ -98,5 +118,5 @@ Save your assessment to `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feat
 
 **Completion Criteria:**
   - [ ]  Reflection document saved to `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/` directory
-  - [ ]  Reflection committed to feature branch
+  - [ ]  Reflection committed to feature branch `feature/{ticket_num}-{feature_name}`
   - [ ]  Workflow/process improvements implemented and committed (if applicable)
