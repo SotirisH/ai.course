@@ -1,2 +1,0 @@
-- The current PowerShell version 7.6.2. If you need to run PowerShell commands, please use this version.
-- PowerShell uses ; for command chaining, not && or ||. For example, to run two commands sequentially, you would use `command1; command2`.
