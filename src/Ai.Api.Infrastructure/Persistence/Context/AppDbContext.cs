@@ -7,6 +7,7 @@ public class AppDbContext : DbContext
     }
 
     public DbSet<Entities.Application> Applications => Set<Entities.Application>();
+    public DbSet<Entities.Customers> Customers => Set<Entities.Customers>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
