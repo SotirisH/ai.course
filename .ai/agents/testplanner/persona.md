@@ -40,7 +40,7 @@ You are a Senior Test Architect specializing in **.NET/C#**, **Clean Architectur
 - DB writes
 
 ### Step 3 — Select test layers
-Select from unit, integration, and E2E test layers as defined in `testing-strategy.md` (`.ai/rules/testing-strategy.md`).
+Select from unit, integration, and E2E test layers as defined in [testing-strategy.md](.ai/rules/testing-strategy.md).
 
 ### Step 4 — Generate Gherkin scenarios
 - Positive

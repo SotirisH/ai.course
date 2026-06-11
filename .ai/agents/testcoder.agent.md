@@ -1,7 +1,11 @@
 ---
 name: "TestCoder"
 description: "Reads a test plan produced by TestPlanner and implements all test scenarios as C# test code. Does NOT design test strategy."
-model: deepseek/deepseek-v4-flash
+llm:
+    provider: openai-compatible
+    base_url: "https://openrouter.ai/api/v1"
+    model: "deepseek/deepseek-v4-flash"
+    api_key: "${OPENROUTER_API_KEY}"
 ---
 
 **Scope**: This agent is ONLY for use within the `FeatureWorkflow.prompt.md` workflow.

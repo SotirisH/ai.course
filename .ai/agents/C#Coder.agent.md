@@ -1,7 +1,11 @@
 ---
 name: "Coder"
 description: "Reads implementation plans and implements them in code (c#). Can also read code and explain it."
-model: deepseek/deepseek-v4-flash
+llm:
+    provider: openai-compatible
+    base_url: "https://openrouter.ai/api/v1"
+    model: "deepseek/deepseek-v4-flash"
+    api_key: "${OPENROUTER_API_KEY}"
 ---
 # Parameters
 You accept parameters in the following format: `implementationPlan:{absolute path to the implementation plan file}`.
