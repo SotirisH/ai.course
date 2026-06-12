@@ -15,10 +15,9 @@ llm:
 
 # Parameters
 You accept parameters in the following format:
-- `workItemFile:{absolute path to the work item file}` — path to the work item file (required)
-- `implementationPlan:{absolute path to the implementation plan file}` — path to the implementation plan file (required)
+- `workItemFile:{path to the work item file}` — path to the work item file (required)
+- `implementationPlan:{path to the implementation plan file}` — path to the implementation plan file (required)
 
-All paths MUST be absolute paths. If a relative path is provided for either parameter, STOP and ask the user to provide the absolute path.
 Both parameters are required. If either is missing, STOP and ask the user to provide them.
 
 # Context
@@ -27,13 +26,14 @@ Please include the following files as your global context:
 - [architecture.md](.ai/rules/architecture.md)
 - [coding-standards.md](.ai/rules/coding-standards.md)
 - [tech-stack.md](.ai/rules/tech-stack.md)
+- [testing-strategy.md](../rules/testing-strategy.md)
 
 IMPORTANT: If you fail to load any of the above files then STOP, state which files you failed to load and the reason!
 
 # Test Planning Stage
 
 ## Steps
-1. Extract `{ticket_num}`, `{feature_name}`, `{work_item_type}` from the `## Metadata` section of `{implementationPlan}`.
+1. Extract `{ticket_num}`, `{feature_name}`, `{work_item_type}` from the `## Metadata` section of `{workItemFile}`.
    - If missing, STOP and ask the user.
 2. Read the Story and acceptance criteria from `{workItemFile}`.
 3. Read the full implementation plan from `{implementationPlan}` to understand what was built:
@@ -47,7 +47,7 @@ IMPORTANT: If you fail to load any of the above files then STOP, state which fil
    - Generate Gherkin scenarios (positive, negative, edge cases, mapping, DB)
    - Map each scenario to: test layer, target test project path, test class name, test method name
 5. **Check for existing test plan**:
-   - Look for `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/{ticket_num}-{feature_name}.qa-plan.md`
+   - Look for `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name_kebab}/{ticket_num}-{feature_name_kebab}.qa-plan.md`
    - If found: ask the user — **Keep**, **Update**, or **Overwrite**
 
 ## Output
@@ -57,11 +57,11 @@ Output is split into two phases to avoid tool conflicts.
 **Do this before any `create_file` calls.**
 1. Ensure the output directory exists:
    ```
-   New-Item -ItemType Directory -Force -Path ".ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}"
+   New-Item -ItemType Directory -Force -Path ".ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name_kebab}"
    ```
 2. If overwriting, clean stale qa artifacts:
    ```
-   Remove-Item -Path ".ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/qa*" -Force
+   Remove-Item -Path ".ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name_kebab}/qa*" -Force
    ```
 
 ### Phase B: Content Generation (File Creation)
@@ -85,7 +85,7 @@ Generate the following additional sections:
 - Automation Approach
 - Missing Information / Open Questions
 
-Save to: `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/{ticket_num}-{feature_name}.qa-plan.md`
+Save to: `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name_kebab}/{ticket_num}-{feature_name_kebab}.qa-plan.md`
 
 **Completion Criteria:**
 - [ ] All feature types identified
@@ -99,7 +99,7 @@ Save to: `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/{tick
 #### Output B: Reflect & Adapt Document
 Use the template at `.ai/agents/shared/reflect-adapt-template.md` to structure your assessment.
 
-Save to: `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/qa.plan.reflections.md`
+Save to: `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name_kebab}/qa.plan.reflections.md`
 
 **Completion Criteria:**
 - [ ] Reflection document saved

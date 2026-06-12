@@ -18,7 +18,8 @@ Please include the following files as your global context:
 - [coding-standards.md](.ai/rules/coding-standards.md)
 - [tech-stack.md](.ai/rules/tech-stack.md)
 - [architecture.md](.ai/rules/architecture.md)
-IMPORTANT: If you fail to load any of the above files then STOP, state which files you failed to load and the reason!
+
+**IMPORTANT**: If you fail to load any of the above files then STOP, state which files you failed to load and the reason!
 
 # Implementation Stage
 ## Before Implementation
@@ -39,16 +40,16 @@ IMPORTANT: If you fail to load any of the above files then STOP, state which fil
 
 ## After Implementation 
 - Create a compliance Checklist where all coding standards in `the coding-standards.md` have been followed
-- Save the compliance checklist in a file named `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/compliance-checklist.md`.
+- Save the compliance checklist in a file named `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name_kebab}/compliance-checklist.md`.
 
 **Completion Criteria:**
 - [ ]  All files listed in the implementation plan's "File change list" have been created or modified
 - [ ]  Code compiles without errors
 - [ ]  All coding standards from `coding-standards.md` have been applied
-- [ ]  Compliance checklist saved to `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/compliance-checklist.md`
-- [ ]  Reflection document saved to `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/Implementation.reflections.md`
-- [ ]  All changes committed to feature branch `feature/{ticket_num}-{feature_name}`
+- [ ]  Compliance checklist saved to `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name_kebab}/compliance-checklist.md`
+- [ ]  Reflection document saved to `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name_kebab}/Implementation.reflections.md`
+- [ ]  All changes committed to feature branch `feature/{ticket_num}-{feature_name_kebab}`
 
 ### Reflect & Adapt Document
 Use the template at `.ai/agents/shared/reflect-adapt-template.md` to structure your assessment.
-Save to: `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/Implementation.reflections.md`
+Save to: `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name_kebab}/Implementation.reflections.md`

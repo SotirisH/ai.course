@@ -15,9 +15,8 @@ llm:
 
 # Parameters
 You accept parameters in the following format:
-- `testPlan:{absolute path to the qa-plan file produced by TestPlanner}` (required)
+- `testPlan:{path to the qa-plan file produced by TestPlanner}` (required)
 
-The path MUST be an absolute path. If a relative path is provided, STOP and ask the user to provide the absolute path.
 This parameter is required. If not provided, STOP and ask the user.
 
 # Context
@@ -26,7 +25,8 @@ Please include the following files as your global context:
 - [coding-standards.md](.ai/rules/coding-standards.md)
 - [tech-stack.md](.ai/rules/tech-stack.md)
 - [architecture.md](.ai/rules/architecture.md)
-
+- [testing-strategy.md](../rules/testing-strategy.md)
+- 
 IMPORTANT: If you fail to load any of the above files then STOP, state which files you failed to load and the reason!
 
 # Test Implementation Stage
@@ -57,11 +57,11 @@ IMPORTANT: If you fail to load any of the above files then STOP, state which fil
 
 ## After Implementation
 - Create a compliance Checklist where all coding standards in `the coding-standards.md` have been followed
-- Save to: `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/qa-compliance-checklist.md`
+- Save to: `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name_kebab}/qa-compliance-checklist.md`
 
 ### Reflect & Adapt Document
 Use the template at `.ai/agents/shared/reflect-adapt-template.md` to structure your assessment.
-Save to: `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/qa.code.reflections.md`
+Save to: `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name_kebab}/qa.code.reflections.md`
 
 **Completion Criteria:**
 - [ ] All test scenarios implemented

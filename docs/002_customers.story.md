@@ -17,6 +17,7 @@ The system should allow administrators to create, update, retrieve, and list Cus
 - PUT `/customers/{id}`
 - GET `/customers/{id}`
 - GET `/customers`
+- DELETE `/customers/{id}``
 
 ## customers model
 - id: (primary key) datatype: guid

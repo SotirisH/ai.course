@@ -14,8 +14,7 @@ llm:
 > *"I am the Planner agent. I only operate within the Feature Workflow. Please use the FeatureWorkflow.prompt.md prompt."*
  
 # Parameters
-You accept parameters in the following format: `workItemFile:{absolute path to the work item file}`.
-The path MUST be an absolute path. If a relative path is provided, STOP and ask the user to provide the absolute path.
+You accept parameters in the following format: `workItemFile:{path to the work item file}`.
 This parameter is required. If the user hasn't provided it, you should ask them to do so.
 
 # Context
@@ -41,7 +40,7 @@ what components you will need to create or modify, and how you will ensure that 
    - (c) If a matching plan file is found:
      - Ask the user if they want to **Keep existing plan**, **Update with new insights**, or **Overwrite completely**
      - If "Keep existing plan": Skip remaining PLAN steps and output the existing plan as the response.
-     - If "Update" or "Overwrite": **Clean the target directory first** by running `Remove-Item -Path ".ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/*.md" -Force` via terminal. This prevents stale artifacts and avoids `create_file` overwrite conflicts. Then proceed to step 3.
+     - If "Update" or "Overwrite": **Clean the target directory first** by running `Remove-Item -Path ".ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name_kebab}/*" -Force` via terminal. This prevents stale artifacts and avoids `create_file` overwrite conflicts. Then proceed to step 3.
    - (d) If no matching plan file exists → proceed to Step 3.
 3. Read the "Story" & acceptance criteria from `{workItemFile}`
    - *Error handling*: If `{work_item_type}` is invalid or not found, ask the user to clarify.
@@ -52,6 +51,12 @@ what components you will need to create or modify, and how you will ensure that 
    - Infrastructure (Repositories, DbContext)
    - API (Controllers, Requests/Responses)
    - **Naming Convention Checkpoint**: Apply naming conventions as defined in `architecture.md` — Naming Conventions section.
+5. **Pre-scaffold Detection**: Before finalizing the file change list, scan all layers for existing files that match the feature's naming patterns:
+   - Use `Get-ChildItem -Path "src/Ai.Api.Domain/**/*{feature_base}*" -Recurse` (and similar for Application, Infrastructure, API layers) via terminal.
+   - `{feature_base}` should be derived from `{feature_name}` by lowercasing and removing spaces (e.g., "Customer Management" → "customer").
+   - Run a single combined scan if possible, or individual layer scans.
+   - **If existing files are found**: Mark them in the plan's file change list as `🟡 Already exists — review before use` rather than `CREATE`. This prevents unnecessary file creation and alerts the implementation stage to review existing code.
+   - *Error handling*: If the scan fails (e.g., directory doesn't exist yet), treat that as "no files found" and proceed.
 
 ## Output
 Two files will be generated as output of this stage. Output is split into two phases to avoid tool conflicts:
@@ -61,40 +66,44 @@ Two files will be generated as output of this stage. Output is split into two ph
 **Do this before any `create_file` calls.** Use `run_in_terminal` for all filesystem operations:
 1. Create the output directory (if it doesn't exist):
    ```
-   New-Item -ItemType Directory -Force -Path ".ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}"
+   New-Item -ItemType Directory -Force -Path ".ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name_kebab}"
    ```
 2. Clean stale artifacts (if overwriting):
    ```
-   Remove-Item -Path ".ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/*" -Force
+   Remove-Item -Path ".ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name_kebab}/*" -Force
    ```
    This ensures the target directory is clean before writing, avoiding `create_file` overwrite errors and old-plan confusion.
 3. Create the feature branch (if not already on it) and make an initial commit:
-   - Branch naming convention: `feature/{ticket_num}-{feature_name}` (e.g., `feature/ABC-123-application-management`)
+   - **Branch naming**: Per `coding-standards.md`, use **kebab-case** exclusively.
+   - Derive `{feature_name_kebab}` from `{feature_name}` by **replacing spaces with hyphens and converting to lowercase**.
+     - Example: `"Customer Management"` → `"customer-management"`
+     - Example: `"User Profile Settings"` → `"user-profile-settings"`
+   - Branch name format: `feature/{ticket_num}-{feature_name_kebab}` (e.g., `feature/001-customer-management`)
    - Check if the branch already exists:
      ```
-     git branch --list "feature/{ticket_num}-{feature_name}"
+     git branch --list "feature/{ticket_num}-{feature_name_kebab}"
      ```
    - If it does **not** exist, create and switch to it:
      ```
-     git checkout -b feature/{ticket_num}-{feature_name}
+     git checkout -b feature/{ticket_num}-{feature_name_kebab}
      ```
    - If it already exists, switch to it:
      ```
-     git checkout feature/{ticket_num}-{feature_name}
+     git checkout feature/{ticket_num}-{feature_name_kebab}
      ```
    - Stage the new directory and make an initial commit:
      ```
-     git add .ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/
+     git add .ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name_kebab}/
      git commit -m "chore({ticket_num}): initialise plan directory for {feature_name}"
      ```
 
 ### Phase B: Content Generation (File Creation)
 **Only after Phase A completes.** Use `create_file` for each document:
-- Plan document → `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/{ticket_num}-{feature_name}.plan.md`
-- Reflections document → `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/plan.reflections.md`
+- Plan document → `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name_kebab}/{ticket_num}-{feature_name_kebab}.plan.md`
+- Reflections document → `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name_kebab}/plan.reflections.md`
 
 #### **Output A**: Plan Document
-- Format: `{work_item_type}/{ticket_num}-{feature_name}.plan.md`
+- Format: `{work_item_type}/{ticket_num}-{feature_name_kebab}.plan.md`
   - `{feature_name}` is the value extracted from the work item's `## Metadata` section in Step 1. It must already be present there. If it is missing, STOP and ask the user to add it to the work item file before proceeding.
 - The plan document MUST begin with a `## Metadata` section containing:
   - **Ticket**: `{ticket_num}`
@@ -111,16 +120,17 @@ Two files will be generated as output of this stage. Output is split into two ph
 
 **Completion Criteria:**
 - [ ]  Existing plan check completed
-- [ ]  Feature branch `feature/{ticket_num}-{feature_name}` created or checked out
-- [ ]  Plan saved to `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/{ticket_num}-{feature_name}.plan.md`
-- [ ]  Plan committed to feature branch `feature/{ticket_num}-{feature_name}`
+- [ ]  Pre-scaffold detection completed — existing files flagged in file change list
+- [ ]  Feature branch `feature/{ticket_num}-{feature_name_kebab}` created or checked out
+- [ ]  Plan saved to `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name_kebab}/{ticket_num}-{feature_name_kebab}.plan.md`
+- [ ]  Plan committed to feature branch `feature/{ticket_num}-{feature_name_kebab}`
 
 #### **Output B**: Reflect & Adapt Document
 Use the template at `.ai/agents/shared/reflect-adapt-template.md` to structure your assessment.
 
-Save your assessment to `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/plan.reflections.md`.
+Save your assessment to `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name_kebab}/plan.reflections.md`.
 
 **Completion Criteria:**
-  - [ ]  Reflection document saved to `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/` directory
-  - [ ]  Reflection committed to feature branch `feature/{ticket_num}-{feature_name}`
+  - [ ]  Reflection document saved to `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name_kebab}/` directory
+  - [ ]  Reflection committed to feature branch `feature/{ticket_num}-{feature_name_kebab}`
   - [ ]  Workflow/process improvements implemented and committed (if applicable)

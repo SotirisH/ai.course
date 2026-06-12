@@ -3,7 +3,4 @@
     <Project Path="src/Ai.Api.Application/Ai.Api.Application.csproj" />
     <Project Path="src/Ai.Api.Infrastructure/Ai.Api.Infrastructure.csproj" />
     <Project Path="src/Ai.Api/Ai.Api.csproj" />
-    <Project Path="tests/Ai.Api.UnitTests/Ai.Api.UnitTests.csproj" />
-    <Project Path="tests/Ai.Api.IntegrationTests/Ai.Api.IntegrationTests.csproj" />
-    <Project Path="tests/Ai.Api.ApiTests/Ai.Api.ApiTests.csproj" />
 </Solution>

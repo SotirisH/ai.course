@@ -1,4 +1,4 @@
-# Workflow & Status
+# Feature Workflow 
 This document defines the development workflow, and commit practices.
 
 # Agent Instructions
@@ -33,13 +33,14 @@ The Planner agent will:
 - Extract metadata (`ticket_num`, `feature_name`, `work_item_type`) and check for existing plans
 - Analyze the work item story & acceptance criteria
 - Identify required file changes across Domain, Application, Infrastructure, and API layers
-- Produce a **Plan Document** saved to `{workspace_root}/.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/{ticket_num}-{feature_name}.plan.md`
-- Produce a **Reflect & Adapt Document** saved to `{workspace_root}/.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/plan.reflections.md`
+- Produce a **Plan Document** saved to `{workspace_root}/.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name_kebab}/{ticket_num}-{feature_name_kebab}.plan.md`
+- Produce a **Reflect & Adapt Document** saved to `{workspace_root}/.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name_kebab}/plan.reflections.md`
 
-After the Planner agent completes, **extract the metadata variables** by reading the plan file at `{workspace_root}/.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/{ticket_num}-{feature_name}.plan.md`:
+After the Planner agent completes, **extract the metadata variables** by reading the plan file at `{workspace_root}/.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name_kebab}/{ticket_num}-{feature_name_kebab}.plan.md`:
 - If the file does not exist or cannot be read, **STOP** and inform the user that Stage 1 did not complete successfully before proceeding.
 - Read the `## Metadata` section to capture `{ticket_num}`, `{feature_name}`, and `{work_item_type}` values.
 - If any of the three metadata values are missing or empty, **STOP** and ask the user to provide them manually.
+- **Derive `{feature_name_kebab}`**: Convert `{feature_name}` to kebab-case by replacing spaces with hyphens and lowercasing (e.g., "Customer Management" → `customer-management`).
 - Store these values for use in all subsequent stages.
 
 ⛔ **STOP — Present Stage 1 output to the user. Only proceed to Stage 2 with explicit user approval.**
@@ -49,13 +50,13 @@ After the Planner agent completes, **extract the metadata variables** by reading
 # Stage 2: FEATURE IMPLEMENTATION
 **Agent**: `C#Coder` | **Model**: `deepseek/deepseek-v4-flash`
 
-Delegate implementation to the **C#Coder** agent. Use `run_subagent` with `agentName: "C#Coder"` and pass `implementationPlan:{workspace_root}/.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/{ticket_num}-{feature_name}.plan.md` in the task.
+Delegate implementation to the **C#Coder** agent. Use `run_subagent` with `agentName: "C#Coder"` and pass `implementationPlan:{workspace_root}/.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name_kebab}/{ticket_num}-{feature_name_kebab}.plan.md` in the task.
 
 The C#Coder agent will:
 - Analyze the implementation plan for completeness and clarity
 - Implement the feature across all required layers (Domain, Application, Infrastructure, API)
-- Produce a **Compliance Checklist** saved to `{workspace_root}/.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/compliance-checklist.md`
-- Produce a **Reflect & Adapt Document** saved to `{workspace_root}/.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/Implementation.reflections.md`
+- Produce a **Compliance Checklist** saved to `{workspace_root}/.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name_kebab}/compliance-checklist.md`
+- Produce a **Reflect & Adapt Document** saved to `{workspace_root}/.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name_kebab}/Implementation.reflections.md`
 
 ⛔ **STOP — Present Stage 2 output to the user. Only proceed to Stage 3 with explicit user approval.**
 
@@ -66,15 +67,15 @@ The C#Coder agent will:
 
 Delegate test planning to the **TestPlanner** agent. Use `run_subagent` with `agentName: "TestPlanner"` and pass:
 - `workItemFile:{workspace_root}/{work_item_file}`
-- `implementationPlan:{workspace_root}/.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/{ticket_num}-{feature_name}.plan.md`
+- `implementationPlan:{workspace_root}/.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name_kebab}/{ticket_num}-{feature_name_kebab}.plan.md`
 
 The TestPlanner agent will:
 - Analyze the work item requirements and the full implementation plan
 - Identify feature types, risks, and applicable test layers
 - Generate Gherkin scenarios (positive, negative, edge cases, mapping, DB)
 - Map every scenario to a test file, class name, and method name
-- Produce a **Test Plan Document** saved to `{workspace_root}/.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/{ticket_num}-{feature_name}.qa-plan.md`
-- Produce a **Reflect & Adapt Document** saved to `{workspace_root}/.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/qa.plan.reflections.md`
+- Produce a **Test Plan Document** saved to `{workspace_root}/.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name_kebab}/{ticket_num}-{feature_name_kebab}.qa-plan.md`
+- Produce a **Reflect & Adapt Document** saved to `{workspace_root}/.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name_kebab}/qa.plan.reflections.md`
 
 ⛔ **STOP — Present Stage 3 output to the user. Only proceed to Stage 4 with explicit user approval.**
 
@@ -84,12 +85,12 @@ The TestPlanner agent will:
 **Agent**: `TestCoder` | **Model**: `deepseek/deepseek-v4-flash`
 
 Delegate test code generation to the **TestCoder** agent. Use `run_subagent` with `agentName: "TestCoder"` and pass:
-- `testPlan:{workspace_root}/.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/{ticket_num}-{feature_name}.qa-plan.md`
+- `testPlan:{workspace_root}/.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name_kebab}/{ticket_num}-{feature_name_kebab}.qa-plan.md`
 
 The TestCoder agent will:
 - Read the test plan and derive the implementation plan path from its `## Metadata` section
 - Implement all Gherkin scenarios as C# test code using the Test File Map from the test plan
-- Produce a **QA Compliance Checklist** saved to `{workspace_root}/.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/qa-compliance-checklist.md`
-- Produce a **Reflect & Adapt Document** saved to `{workspace_root}/.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name}/qa.code.reflections.md`
+- Produce a **QA Compliance Checklist** saved to `{workspace_root}/.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name_kebab}/qa-compliance-checklist.md`
+- Produce a **Reflect & Adapt Document** saved to `{workspace_root}/.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name_kebab}/qa.code.reflections.md`
 
-⛔ **STOP — Present Stage 4 output to the user. The workflow is complete.**
+⛔ **STOP — Present Stage 4 output to the user. The workflow is complete.`
