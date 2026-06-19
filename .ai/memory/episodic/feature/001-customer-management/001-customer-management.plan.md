@@ -1,186 +1,471 @@
+# Implementation Plan: Customer Management
+
 ## Metadata
 
-- Ticket: 001
-- Feature Name: Customer Management
-- Work Item Type: feature
-
-## Story summary
-
-Administrators must be able to create, update, retrieve, delete and list customers. Each customer has a unique identifier (GUID) and a set of fields (first name, last name, tax id, comments).
-
-## Acceptance criteria (Given / When / Then)
-
-- Given an authenticated administrator
-  - When they POST /customers with valid payload
-  - Then a new Customer is created and returned (201) with its id
-
-- Given an existing Customer id
-  - When they PUT /customers/{id} with valid payload
-  - Then the customer is updated (200) and returned
-
-- Given an existing Customer id
-  - When they GET /customers/{id}
-  - Then the customer is returned (200)
-
-- Given no filters
-  - When they GET /customers
-  - Then a list of customers is returned (200)
-
-- Given an existing Customer id
-  - When they DELETE /customers/{id}
-  - Then the customer is removed (204)
-
-## Spec issues / Consistency checks
-
-1. Field-level ambiguity:
-   - first_name has no "mandatory" trait while last_name is mandatory. Is first_name optional? (Assume: optional unless user clarifies.)
-2. Missing auditing fields:
-   - Story/model does not mention created_at/updated_at. Recommend adding audit fields or confirm omission.
-3. List endpoint behavior unspecified:
-   - No paging, sorting or filtering defined. For production-safe APIs we should add pagination and at least basic sorting; otherwise list may return large result sets.
-4. Validation rules incomplete:
-   - No explicit constraints for string encoding, allowed characters, or tax_id format beyond length and uniqueness.
-5. Uniqueness enforcement:
-   - tax_id must be unique — must be enforced at DB (unique index) and handled at repository/service level for clear errors.
-6. Route parameter types:
-   - Endpoints use {id} but do not specify type; controllers should constrain to GUID in route templates.
-7. Authorization:
-   - Story says "administrator" but no auth/roles implementation details are provided. Assume role-based authorization is already available and will be required on controller actions.
-8. Plural/singular naming:
-   - Model section uses plural 'customers'; domain and DTOs should use singular 'Customer'.
-9. Typo / formatting:
-   - DELETE line contains an extra backtick on the story file. (Minor)
-
-These items are included as open questions below.
-
-## Questions for clarification
-
-1. Is first_name optional or required?
-2. Should we include auditing fields (created_at, updated_at)?
-3. Should GET /customers support pagination, sorting or filtering? If yes, preferred defaults (page size, sort fields)?
-4. Is tax_id format constrained beyond length (e.g., numeric only)?
-5. Are there soft-delete requirements or hard delete only?
-6. Should we expose any additional fields (email, phone) in this feature or defer to future stories?
-7. Confirm authorization: require [Authorize(Roles = "Administrator")] on controller or handled elsewhere?
-8. Any internationalization concerns for name fields (normalization)?
-
-## File change list
-
-(Pre-scaffold detection: no matching files found — all files listed below are CREATE)
-
-Domain
-- CREATE: (no domain entities per architecture) — may add Domain exceptions if needed (e.g., CustomerNotFoundException).
-
-Application
-- CREATE: src/Ai.Api.Application/Features/Customer/DTOs/CustomerDto.cs  🟢 CREATE
-- CREATE: src/Ai.Api.Application/Features/Customer/DTOs/CreateCustomerDto.cs  🟢 CREATE
-- CREATE: src/Ai.Api.Application/Features/Customer/DTOs/UpdateCustomerDto.cs  🟢 CREATE
-- CREATE: src/Ai.Api.Application/Features/Customer/Commands/CreateCustomerCommandHandler.cs  🟢 CREATE
-- CREATE: src/Ai.Api.Application/Features/Customer/Commands/UpdateCustomerCommandHandler.cs  🟢 CREATE
-- CREATE: src/Ai.Api.Application/Features/Customer/Commands/DeleteCustomerCommandHandler.cs  🟢 CREATE
-- CREATE: src/Ai.Api.Application/Features/Customer/Queries/GetCustomerByIdQueryHandler.cs  🟢 CREATE
-- CREATE: src/Ai.Api.Application/Features/Customer/Queries/ListCustomersQueryHandler.cs  🟢 CREATE
-- CREATE: src/Ai.Api.Application/Interfaces/Repositories/ICustomerRepository.cs  🟢 CREATE
-- CREATE: src/Ai.Api.Application/Validators/CreateCustomerValidator.cs  🟢 CREATE
-- CREATE: src/Ai.Api.Application/Validators/UpdateCustomerValidator.cs  🟢 CREATE
-- CREATE: src/Ai.Api.Application/Mappers/CustomerMappingExtensions.cs  🟢 CREATE
-
-Infrastructure
-- CREATE: src/Ai.Api.Infrastructure/Persistence/Entities/CustomerEntity.cs  🟢 CREATE
-- CREATE: src/Ai.Api.Infrastructure/Persistence/Configurations/CustomerConfiguration.cs (Fluent API, unique index on tax_id)  🟢 CREATE
-- UPDATE: src/Ai.Api.Infrastructure/Persistence/Context/AppDbContext.cs — add DbSet<CustomerEntity> and apply configuration  🟡 Already exists — review before use
-- CREATE: src/Ai.Api.Infrastructure/Repositories/CustomerRepository.cs implements ICustomerRepository (maps between DTOs and entities)  🟢 CREATE
-- CREATE: src/Ai.Api.Infrastructure/Mappers/CustomerEntityMappings.cs  🟢 CREATE
-
-API / Presentation
-- CREATE: src/Ai.Api.Api/Controllers/CustomersController.cs  🟢 CREATE
-- CREATE: src/Ai.Api.Api/Models/Requests/CreateCustomerRequest.cs  🟢 CREATE
-- CREATE: src/Ai.Api.Api/Models/Requests/UpdateCustomerRequest.cs  🟢 CREATE
-- CREATE: src/Ai.Api.Api/Models/Responses/CustomerResponse.cs  🟢 CREATE
-- CREATE: src/Ai.Api.Api/Mappers/CustomerApiMappings.cs  🟢 CREATE
-
-Database / Migrations
-- CREATE: Migration to add Customers table with unique index on tax_id and appropriate columns (id guid PK, first_name, last_name, tax_id unique, comments)
-
-Tests (recommended)
-- CREATE: tests/Unit/Ai.Api.Application/CustomerTests/CreateCustomerTests.cs
-- CREATE: tests/Integration/Ai.Api.Api/CustomerControllerTests.cs (using WebApplicationFactory + Testcontainers Postgres)
-
-## Implementation details
-
-Data model (persistence)
-- CustomerEntity (Infrastructure/Persistence/Entities):
-  - Id : Guid (PK)
-  - FirstName : string (max 256) NULLABLE
-  - LastName : string (max 256) NOT NULL
-  - TaxId : string (max 16) NOT NULL, UNIQUE
-  - Comments : string (max 1024) NULLABLE
-  - Optionally: CreatedAt, UpdatedAt if confirmed
-
-Fluent API (CustomerConfiguration):
-- Configure property lengths, required for LastName, unique index on TaxId, table name "Customers".
-
-Application DTOs
-- CustomerDto: Id, FirstName, LastName, TaxId, Comments
-- CreateCustomerDto: FirstName?, LastName, TaxId, Comments?
-- UpdateCustomerDto: Id, FirstName?, LastName, TaxId, Comments?
-
-Repository interface (ICustomerRepository)
-- Task<CustomerDto> AddAsync(CreateCustomerDto dto, CancellationToken ct)
-- Task<CustomerDto?> GetByIdAsync(Guid id, CancellationToken ct)
-- Task<IEnumerable<CustomerDto>> ListAsync(CancellationToken ct) -- consider paging in future
-- Task<bool> UpdateAsync(UpdateCustomerDto dto, CancellationToken ct)
-- Task<bool> DeleteAsync(Guid id, CancellationToken ct)
-
-Handlers
-- Use Wolverine mediator handlers for commands / queries per architecture. Handlers validate input (FluentValidation middleware) and call repository.
-
-API
-- CustomersController : ControllerBase
-  - [HttpPost] Create -> maps CreateCustomerRequest -> CreateCustomerDto -> send command -> returns 201 with Location header
-  - [HttpPut("{id:guid}")] Update -> id route constraint; map and call handler
-  - [HttpGet("{id:guid}")] GetById
-  - [HttpGet] List -> consider optional query params for paging
-  - [HttpDelete("{id:guid}")] Delete -> returns 204 on success
-  - Apply [Authorize(Roles = "Administrator")] on controller (assumption)
-
-Validation
-- CreateCustomerValidator enforces LastName required, TaxId required and length <=16. Additional format rules to be clarified.
-
-Error handling
-- Repository should translate unique constraint violations into a domain/application-level validation exception (e.g., TaxIdAlreadyExists) which maps to 409 Conflict on API layer.
-
-Migration
-- Add EF Core migration to create Customers table and unique index on TaxId.
-
-## Implementation order (recommended)
-
-1. Application: Define DTOs, repository interface ICustomerRepository, validators (Create/Update)
-2. Infrastructure: Create CustomerEntity, CustomerConfiguration
-3. Infrastructure: Update AppDbContext to add DbSet and apply configuration
-4. Infrastructure: Implement CustomerRepository
-5. Application: Implement handlers (Create/Update/Get/List/Delete) using repository
-6. API: Add Request/Response models and CustomersController
-7. Migrations: Add and run migration locally (integration tests rely on DB)
-8. Tests: Unit tests for handlers and integration tests for controller
-9. Docs: Update API docs /OpenAPI definitions
-
-## Assumptions (with justification)
-
-1. first_name is optional: The model explicitly marks last_name as mandatory and first_name is not marked. Default to optional to avoid breaking clients. (If wrong, user must confirm.)
-2. Auditing fields are not required: Story omitted created_at/updated_at; to keep scope minimal we will not add them unless requested. (Adding later is backward-compatible if nullable.)
-3. Soft-delete not required: Story mentions delete without specifying soft-delete. Implement hard delete unless instructed otherwise.
-4. Authorization: Assume role-based auth exists; controller will require Administrator role. This aligns with story text mentioning administrators.
-5. No pagination by default: Story did not request it; implement list returning all items but add TODO to introduce pagination when needed. (Simple for MVP.)
-6. TaxId uniqueness enforced at DB + application: Implement unique index and map DB constraint violations to 409 Conflict for clear client feedback.
-7. API route id is GUID: Use route constraints {id:guid} to avoid unnecessary 404s; this follows architecture guidance.
-
-## Next steps / Acceptance to implement
-
-- Answer open questions above.
-- Confirm assumptions or provide corrections.
-- Upon confirmation, implement files per File change list and open a PR from feature/001-customer-management.
+- **Ticket**: 001
+- **Feature Name**: Customer Management
+- **Work Item Type**: feature
 
 ---
 
-Generated by Planner agent.
+## Story Summary
+
+As an administrator, I want to be able to manage customers in the system through a complete set of CRUD operations. The system must support creating, updating, retrieving (single and list), and deleting customers. Each customer must have a unique identifier and a unique tax ID.
+
+---
+
+## Acceptance Criteria (Given-When-Then)
+
+1. **Create Customer**
+   - **Given** I am an administrator
+   - **When** I POST to `/customers` with valid customer data (last_name, tax_id required)
+   - **Then** a new customer is created with a unique GUID and the customer details are returned
+
+2. **Update Customer**
+   - **Given** I am an administrator
+   - **When** I PUT to `/customers/{id}` with valid customer data
+   - **Then** the existing customer is updated with the new information
+
+3. **Retrieve Single Customer**
+   - **Given** I am an administrator
+   - **When** I GET `/customers/{id}` with a valid customer ID
+   - **Then** the customer details are returned
+
+4. **Retrieve All Customers**
+   - **Given** I am an administrator
+   - **When** I GET `/customers`
+   - **Then** a list of all customers in the system is returned
+
+5. **Delete Customer**
+   - **Given** I am an administrator
+   - **When** I DELETE `/customers/{id}` with a valid customer ID
+   - **Then** the customer is permanently removed from the system
+
+---
+
+## Spec Consistency Check
+
+### ✅ Consistent
+- Story mentions managing customers with CRUD operations
+- Acceptance criteria lists all 5 endpoints (Create, Update, Get by ID, List, Delete)
+- Model is defined with all required fields
+- Each Customer has a unique identifier (id as GUID)
+- tax_id is marked as unique and mandatory (appropriate for tax identifiers)
+
+### ⚠️ Potential Issues / Ambiguities
+1. **first_name field**: Not marked as mandatory in the model, but last_name is. Need clarification if this is intentional (some cultures may not use first names or may have single names).
+2. **Pagination**: No mention of pagination for GET `/customers` - need clarification for production scenarios with large datasets.
+3. **Delete type**: Not specified if this should be soft delete (retain for audit) or hard delete (permanent removal).
+4. **Partial updates**: Only PUT is mentioned - should we also support PATCH for partial updates?
+
+---
+
+## File Change List
+
+### 🔵 Domain Layer
+*No files required* - No custom exceptions or domain enums specified in the story.
+
+### 🔵 Application Layer
+
+#### Features/Customers
+- 🆕 **CREATE** `Features/Customers/Commands/CreateCustomerCommandHandler.cs`
+  - Contains: `CreateCustomerCommand` record, `CreateCustomerCommandHandler` class
+  - Validates input, calls repository, returns CustomerDto
+
+- 🆕 **CREATE** `Features/Customers/Commands/UpdateCustomerCommandHandler.cs`
+  - Contains: `UpdateCustomerCommand` record, `UpdateCustomerCommandHandler` class
+  - Validates input, checks existence, calls repository, returns CustomerDto
+
+- 🆕 **CREATE** `Features/Customers/Commands/DeleteCustomerCommandHandler.cs`
+  - Contains: `DeleteCustomerCommand` record, `DeleteCustomerCommandHandler` class
+  - Checks existence, calls repository delete
+
+- 🆕 **CREATE** `Features/Customers/Queries/GetCustomerQueryHandler.cs`
+  - Contains: `GetCustomerQuery` record, `GetCustomerQueryHandler` class
+  - Retrieves single customer by ID, returns CustomerDto or null
+
+- 🆕 **CREATE** `Features/Customers/Queries/GetCustomersQueryHandler.cs`
+  - Contains: `GetCustomersQuery` record, `GetCustomersQueryHandler` class
+  - Retrieves all customers, returns List<CustomerDto>
+
+#### DTOs
+- 🆕 **CREATE** `Features/Customers/DTOs/CustomerDto.cs`
+  - Full customer representation with all fields
+  - Used for responses from queries and commands
+
+- 🆕 **CREATE** `Features/Customers/DTOs/CreateCustomerDto.cs`
+  - Input DTO for creating customers
+  - Fields: FirstName, LastName, TaxId, Comments
+
+- 🆕 **CREATE** `Features/Customers/DTOs/UpdateCustomerDto.cs`
+  - Input DTO for updating customers
+  - Fields: Id, FirstName, LastName, TaxId, Comments
+
+#### Validators
+- 🆕 **CREATE** `Validators/CreateCustomerValidator.cs`
+  - FluentValidation validator for CreateCustomerDto
+  - Rules: LastName required + max 256 chars, TaxId required + max 16 chars, FirstName max 256 chars (optional), Comments max 1024 chars
+
+- 🆕 **CREATE** `Validators/UpdateCustomerValidator.cs`
+  - FluentValidation validator for UpdateCustomerDto
+  - Rules: Same as create + Id validation
+
+#### Interfaces
+- 🆕 **CREATE** `Interfaces/Repositories/ICustomerRepository.cs`
+  - Methods: AddAsync(CreateCustomerDto), UpdateAsync(UpdateCustomerDto), GetByIdAsync(Guid), GetAllAsync(), DeleteAsync(Guid), ExistsByTaxIdAsync(string, Guid?)
+
+### 🔵 Infrastructure Layer
+
+#### Persistence/Entities
+- 🆕 **CREATE** `Persistence/Entities/CustomerEntity.cs`
+  - EF Core entity representing the Customers table
+  - Properties: Id (Guid, PK), FirstName (string?), LastName (string), TaxId (string), Comments (string?)
+
+#### Persistence/Configurations
+- 🆕 **CREATE** `Persistence/Configurations/CustomerEntityConfiguration.cs`
+  - Fluent API configuration for CustomerEntity
+  - Configures: Table name, primary key, column types/lengths, unique constraint on TaxId, required fields
+
+#### Persistence/Repositories
+- 🆕 **CREATE** `Persistence/Repositories/CustomerRepository.cs`
+  - Implements ICustomerRepository
+  - Methods use extension mappers to convert between DTOs and entities
+  - Handles uniqueness check for TaxId
+
+#### Mappers
+- 🆕 **CREATE** `Mappers/CustomerMapperExtensions.cs`
+  - Extension methods for mapping between DTOs and entities
+  - ToEntity(), ToDto() methods
+
+#### Migrations
+- 🆕 **CREATE** `Migrations/{timestamp}_CreateCustomersTable.cs` (EF Core generated)
+  - Creates Customers table with proper schema
+  - Adds unique index on TaxId
+
+### 🔵 API Layer
+
+#### Controllers
+- 🆕 **CREATE** `Controllers/CustomersController.cs`
+  - REST controller with 5 endpoints:
+    - POST /customers → CreateCustomer
+    - PUT /customers/{id} → UpdateCustomer
+    - GET /customers/{id} → GetCustomer
+    - GET /customers → GetCustomers
+    - DELETE /customers/{id} → DeleteCustomer
+  - Uses Wolverine mediator to send commands/queries
+  - Uses ActionResult<T> for all responses
+  - Implements proper HTTP status codes (200, 201, 204, 400, 404)
+
+#### Models/Requests
+- 🆕 **CREATE** `Models/Requests/CreateCustomerRequest.cs`
+  - API request model for creating customers
+  - Fields: FirstName, LastName, TaxId, Comments
+
+- 🆕 **CREATE** `Models/Requests/UpdateCustomerRequest.cs`
+  - API request model for updating customers
+  - Fields: FirstName, LastName, TaxId, Comments (Id comes from route)
+
+#### Models/Responses
+- 🆕 **CREATE** `Models/Responses/CustomerResponse.cs`
+  - API response model for customer data
+  - Fields: Id, FirstName, LastName, TaxId, Comments
+
+#### Mappers
+- 🆕 **CREATE** `Mappers/CustomerMapperExtensions.cs`
+  - Extension methods for mapping between API models and DTOs
+  - ToCommand(), ToDto(), ToResponse() methods
+
+---
+
+## Implementation Details
+
+### Technology Stack
+- **Framework**: .NET 10+ / C# 14+
+- **Architecture**: Clean Architecture with 4 layers
+- **CQRS**: Wolverine mediator for commands and queries
+- **Validation**: FluentValidation integrated with Wolverine middleware
+- **ORM**: Entity Framework Core with PostgreSQL (Npgsql provider)
+- **Repository Pattern**: Interfaces in Application, implementations in Infrastructure
+- **API**: ASP.NET Core Web API with Controllers (no Minimal APIs)
+
+### Key Design Decisions
+
+1. **DTO-Based Repository Pattern**
+   - Repositories accept and return DTOs, never domain entities
+   - Infrastructure layer maps between persistence entities and DTOs internally
+   - Application layer remains decoupled from persistence concerns
+
+2. **CQRS with Wolverine**
+   - Separate command and query handlers for clear separation of concerns
+   - Commands modify state (Create, Update, Delete)
+   - Queries retrieve data (Get, GetAll)
+   - Each handler focuses on a single responsibility
+
+3. **Validation Strategy**
+   - FluentValidation validators in Application layer
+   - Integrated with Wolverine middleware for automatic validation
+   - Validation occurs before handler execution
+   - Returns 400 Bad Request with validation details on failure
+
+4. **API Contract Separation**
+   - API layer defines its own request/response models
+   - Not exposing Application DTOs directly to clients
+   - Provides flexibility to evolve internal and external contracts independently
+
+5. **Uniqueness Constraint**
+   - TaxId must be unique across all customers
+   - Enforced at database level via unique index
+   - Additional check in repository before insert/update to provide friendly error messages
+   - Update operations exclude current customer ID from uniqueness check
+
+6. **Error Handling**
+   - 404 Not Found when customer doesn't exist (Get, Update, Delete)
+   - 400 Bad Request for validation failures
+   - 409 Conflict for duplicate TaxId attempts
+   - Proper use of ActionResult<T> for type-safe responses
+
+7. **ID Generation**
+   - Use `Guid.CreateVersion7()` for customer IDs
+   - Version 7 GUIDs are time-ordered, improving database index performance
+
+### Database Schema
+
+**Table: Customers**
+
+| Column      | Type          | Constraints                  |
+|-------------|---------------|------------------------------|
+| Id          | UUID (GUID)   | PRIMARY KEY                  |
+| FirstName   | VARCHAR(256)  | NULLABLE                     |
+| LastName    | VARCHAR(256)  | NOT NULL                     |
+| TaxId       | VARCHAR(16)   | NOT NULL, UNIQUE             |
+| Comments    | VARCHAR(1024) | NULLABLE                     |
+
+**Indexes:**
+- Primary Key on Id (automatic)
+- Unique Index on TaxId
+
+### Validation Rules
+
+**CreateCustomerValidator / UpdateCustomerValidator:**
+- `LastName`: Required, MaxLength(256)
+- `TaxId`: Required, MaxLength(16), Must be unique (checked via repository)
+- `FirstName`: Optional, MaxLength(256) when provided
+- `Comments`: Optional, MaxLength(1024) when provided
+
+### API Endpoints Specification
+
+#### 1. Create Customer
+- **Endpoint**: `POST /customers`
+- **Request Body**: CreateCustomerRequest (JSON)
+- **Success Response**: 201 Created with CustomerResponse and Location header
+- **Error Responses**: 400 Bad Request (validation), 409 Conflict (duplicate TaxId)
+
+#### 2. Update Customer
+- **Endpoint**: `PUT /customers/{id:guid}`
+- **Request Body**: UpdateCustomerRequest (JSON)
+- **Success Response**: 200 OK with CustomerResponse
+- **Error Responses**: 400 Bad Request (validation), 404 Not Found, 409 Conflict (duplicate TaxId)
+
+#### 3. Get Customer
+- **Endpoint**: `GET /customers/{id:guid}`
+- **Success Response**: 200 OK with CustomerResponse
+- **Error Responses**: 404 Not Found
+
+#### 4. Get All Customers
+- **Endpoint**: `GET /customers`
+- **Success Response**: 200 OK with List<CustomerResponse>
+- **Notes**: Returns empty array if no customers exist
+
+#### 5. Delete Customer
+- **Endpoint**: `DELETE /customers/{id:guid}`
+- **Success Response**: 204 No Content
+- **Error Responses**: 404 Not Found
+
+---
+
+## Implementation Order
+
+### Phase 1: Application Layer Foundation
+1. Create `Features/Customers/DTOs/CustomerDto.cs`
+2. Create `Features/Customers/DTOs/CreateCustomerDto.cs`
+3. Create `Features/Customers/DTOs/UpdateCustomerDto.cs`
+4. Create `Interfaces/Repositories/ICustomerRepository.cs`
+5. Create `Validators/CreateCustomerValidator.cs`
+6. Create `Validators/UpdateCustomerValidator.cs`
+
+### Phase 2: Application Layer Handlers
+7. Create `Features/Customers/Commands/CreateCustomerCommandHandler.cs`
+8. Create `Features/Customers/Commands/UpdateCustomerCommandHandler.cs`
+9. Create `Features/Customers/Commands/DeleteCustomerCommandHandler.cs`
+10. Create `Features/Customers/Queries/GetCustomerQueryHandler.cs`
+11. Create `Features/Customers/Queries/GetCustomersQueryHandler.cs`
+
+### Phase 3: Infrastructure Layer
+12. Create `Persistence/Entities/CustomerEntity.cs`
+13. Create `Persistence/Configurations/CustomerEntityConfiguration.cs`
+14. Create `Mappers/CustomerMapperExtensions.cs`
+15. Create `Persistence/Repositories/CustomerRepository.cs`
+16. Register `ICustomerRepository` in Infrastructure DI
+17. Generate and apply EF Core migration for Customers table
+
+### Phase 4: API Layer
+18. Create `Models/Requests/CreateCustomerRequest.cs`
+19. Create `Models/Requests/UpdateCustomerRequest.cs`
+20. Create `Models/Responses/CustomerResponse.cs`
+21. Create `Mappers/CustomerMapperExtensions.cs`
+22. Create `Controllers/CustomersController.cs`
+
+### Phase 5: Testing & Validation
+23. Manual testing of all 5 endpoints
+24. Verify validation rules work correctly
+25. Verify uniqueness constraint on TaxId
+26. Verify proper HTTP status codes
+27. Verify error handling (404, 400, 409)
+
+---
+
+## Assumptions
+
+### 1. **first_name is Optional**
+**Justification**: The model specification marks `last_name` as mandatory but does not mark `first_name` as mandatory. This suggests intentional optionality. Some cultures use single names, or customers might be organizations. However, this should be confirmed with the product owner.
+
+### 2. **Administrator Authorization is Handled Externally**
+**Justification**: The story mentions "As an administrator" but provides no authentication/authorization details. Assuming this is handled by existing middleware or is out of scope for this feature. The API will focus on functionality, not auth.
+
+### 3. **No Pagination for GET /customers Initially**
+**Justification**: The acceptance criteria do not mention pagination, filtering, or sorting. Assuming a simple list endpoint for the initial implementation. Pagination can be added as a follow-up enhancement if needed.
+
+### 4. **Hard Delete (Permanent Removal)**
+**Justification**: The story says "delete" without specifying soft delete. Assuming hard delete (permanent removal) unless otherwise specified. No audit trail requirement is mentioned.
+
+### 5. **Full Update with PUT (No PATCH)**
+**Justification**: Only PUT is mentioned in the acceptance criteria. Assuming full resource replacement. Partial updates (PATCH) can be added later if needed.
+
+### 6. **Standard REST Conventions**
+**Justification**: Following standard REST practices for endpoint design, HTTP methods, and status codes unless specifically contradicted by requirements.
+
+### 7. **No Search/Filter Capabilities Initially**
+**Justification**: The GET `/customers` endpoint is described as returning a list without any query parameters. Assuming no filtering, searching, or sorting in the first iteration.
+
+### 8. **TaxId Format Not Validated Beyond Length**
+**Justification**: The model specifies max length 16 but doesn't specify format (e.g., SSN, EIN, international formats). Assuming any alphanumeric string up to 16 characters is acceptable unless specific format rules are provided.
+
+### 9. **No Concurrent Update Protection**
+**Justification**: No mention of optimistic concurrency control (e.g., ETags, version numbers). Assuming last-write-wins for updates.
+
+### 10. **English Language for Names/Comments**
+**Justification**: No internationalization requirements specified. Assuming standard UTF-8 string storage without specific locale handling.
+
+---
+
+## Questions for Clarification
+
+### 1. **Is first_name Optional or Mandatory?**
+**Context**: The model marks `last_name` as mandatory but `first_name` has no such trait. Is this intentional to support single-name customers or organizations?
+**Impact**: Affects validation rules and API documentation.
+
+### 2. **Should GET /customers Support Pagination?**
+**Context**: For production scenarios with potentially thousands of customers, returning all at once may cause performance issues.
+**Impact**: Affects API design, repository interface, and query handler. Would add optional query parameters like `?page=1&pageSize=20`.
+
+### 3. **Should We Implement Soft Delete or Hard Delete?**
+**Context**: Soft delete retains data with a "deleted" flag for audit purposes. Hard delete permanently removes records.
+**Impact**: Affects database schema (needs DeletedAt column for soft delete), repository implementation, and query filters.
+
+### 4. **Are There Specific Error Messages or Validation Rules?**
+**Context**: Beyond the basic constraints (required fields, max lengths, uniqueness), are there any specific validation rules for TaxId format, name characters, etc.?
+**Impact**: Affects validator implementation and user experience.
+
+### 5. **Should We Support Partial Updates (PATCH)?**
+**Context**: PUT typically replaces the entire resource. PATCH allows updating only specific fields.
+**Impact**: Requires additional endpoint, command, and handling logic. More flexible for clients.
+
+### 6. **Is There a Preferred TaxId Format or Pattern?**
+**Context**: Tax IDs vary by country (SSN, EIN, VAT, etc.). Should we validate format or accept any string?
+**Impact**: Affects validation rules and potentially error messages.
+
+### 7. **Should the System Prevent Updating a Customer's TaxId?**
+**Context**: Tax IDs are typically immutable once assigned. Should updates be allowed to change the TaxId field?
+**Impact**: Affects update logic and validation. May require separate endpoint for TaxId correction with audit trail.
+
+### 8. **Are There Any Audit Requirements?**
+**Context**: Should we track who created/modified records and when?
+**Impact**: Requires additional fields (CreatedAt, CreatedBy, UpdatedAt, UpdatedBy) in entity and database schema.
+
+---
+
+## Risk Assessment
+
+### Low Risk
+- Standard CRUD operations with well-established patterns
+- Clean Architecture structure provides clear boundaries
+- Wolverine and FluentValidation are mature, well-documented libraries
+
+### Medium Risk
+- TaxId uniqueness enforcement across concurrent requests (mitigated by database unique constraint + pre-check)
+- Performance of GET /customers without pagination (mitigated by assuming low initial volume)
+
+### High Risk
+- None identified at this stage
+
+---
+
+## Dependencies
+
+- **External**: None (self-contained feature)
+- **Internal**: 
+  - Requires AppDbContext to be properly configured in Infrastructure layer
+  - Requires Wolverine to be configured with FluentValidation middleware
+  - Requires proper DI registration in Infrastructure and API layers
+
+---
+
+## Testing Strategy
+
+### Unit Tests (Application Layer)
+- Test each command/query handler with mocked repositories
+- Test validators with various valid/invalid inputs
+- Test edge cases (empty strings, max lengths, null values)
+
+### Integration Tests (Infrastructure Layer)
+- Test repository methods with real database (Testcontainers)
+- Verify TaxId uniqueness constraint enforcement
+- Test entity-to-DTO mappings
+
+### E2E Tests (API Layer)
+- Test all 5 endpoints with WebApplicationFactory
+- Verify proper HTTP status codes
+- Test validation error responses
+- Test 404 scenarios
+- Test conflict scenarios (duplicate TaxId)
+
+---
+
+## Future Enhancements (Out of Scope)
+
+1. Pagination, filtering, and sorting for GET /customers
+2. Search functionality (by name, TaxId)
+3. Soft delete with audit trail
+4. PATCH endpoint for partial updates
+5. Audit fields (CreatedAt, CreatedBy, UpdatedAt, UpdatedBy)
+6. Optimistic concurrency control
+7. Bulk operations (create/update/delete multiple)
+8. Export functionality (CSV, Excel)
+9. Advanced TaxId format validation by country
+10. Customer activity history/audit log
+
+---
+
+## Completion Checklist
+
+- [ ] All Application layer files created
+- [ ] All Infrastructure layer files created
+- [ ] All API layer files created
+- [ ] EF Core migration generated and applied
+- [ ] Repository registered in DI
+- [ ] All 5 endpoints tested manually
+- [ ] Validation rules verified
+- [ ] TaxId uniqueness constraint tested
+- [ ] Error handling verified (404, 400, 409)
+- [ ] Code formatted and follows coding standards
+- [ ] Documentation updated (if applicable)
