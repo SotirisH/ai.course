@@ -59,9 +59,9 @@ IMPORTANT: If you fail to load any of the above files then STOP, state which fil
 - Create a compliance Checklist where all coding standards in `the coding-standards.md` have been followed
 - Save to: `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name_kebab}/qa-compliance-checklist.md`
 
-### Reflect & Adapt Document
-Use the template at `.ai/agents/shared/reflect-adapt-template.md` to structure your assessment.
-Save to: `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name_kebab}/qa.code.reflections.md`
+### Reflect & Adapt
+Invoke the **Reflect & Adapt** skill (`.ai/skills/reflect-and-adapt.skill.md`) with:
+- `outputFile`: `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name_kebab}/qa.code.reflections.md`
 
 **Completion Criteria:**
 - [ ] All test scenarios implemented

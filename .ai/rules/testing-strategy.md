@@ -6,11 +6,46 @@ This document describes a comprehensive testing structure and strategy for C# AP
 
 ## Test Folder Structure
 
+## Project Structure Example
+
+Complete example of a well-organized C# API test project:
+
 ```
-tests/
-├── Unit/              # Unit tests for handlers, validators, mappers, domain logic
-├── Integration/       # Integration tests for API, repositories, DbContext & API (Testcontainers)
-└── E2E/               # SPA integration tests using playright
+YourApi.slnx
+├── src/
+│   ├── YourApi/                    # API layer
+│   ├── YourApi.Application/        # Application layer (handlers, validators)
+│   ├── YourApi.Domain/             # Domain layer (entities, value objects)
+│   └── YourApi.Infrastructure/     # Infrastructure layer (repositories, DbContext)
+└── tests/
+    ├── Unit/
+    │   ├── YourApi.UnitTests.csproj
+    │   ├── Features/
+    │   │   └── Users/
+    │   │       ├── CreateUserCommandHandlerTests.cs
+    │   │       ├── GetUserQueryHandlerTests.cs
+    │   │       └── UpdateUserCommandHandlerTests.cs
+    │   ├── Validators/
+    │   │   └── CreateUserCommandValidatorTests.cs
+    │   ├── Mappers/
+    │   │   └── UserMappingExtensionsTests.cs
+    │   └── Builders/
+    │       └── UserBuilder.cs
+    ├── Integration/
+        ├──Infastracture/
+        │   ├── YourApi.Integration.InfastractureTests.csproj
+        │   ├── Repositories/
+        │   │   └── UserRepositoryIntegrationTests.cs
+        │   ├── Persistence/
+        │   │   └── DatabaseMigrationsTests.cs
+        │   └── Fixtures/
+        │       └── DatabaseFixture.cs
+        └──API/
+            ├── YourApi.Integration.APITests.csproj
+            ├── Controllers/
+            │   └── UserManagementControllerAPITests.cs
+            └── Middlewares/
+                └── CustomMiddlewareTests.cs
 ```
 ## Test Layer Definitions
 
@@ -27,11 +62,6 @@ tests/
 - Service classes
 - Utility functions
 
-**Tools**:
-- **xUnit** (test framework)
-- **Shouldly** (assertions)
-- **Moq**  (mocking dependencies)
-
 **Characteristics**:
 - Fast execution (milliseconds)
 - No database or external services
@@ -40,12 +70,10 @@ tests/
 - Deterministic results
 - No I/O operations
 
-
-### Infrastructure Integration Tests (`tests/IntegrationTests/Infrastructure`)
+### Infrastructure Integration Tests (`tests/Integration/Infrastructure`)
 
 **Purpose**: 
 - Test infrastructure layer components with real dependencies.
-- Test API controlers
 
 **Target Components**:
 - Repository implementations
@@ -56,14 +84,6 @@ tests/
 - Database constraints and indexes
 - Transaction handling
 - External API integrations (with real HTTP calls or test servers)
-- Message broker integrations (RabbitMQ, Azure Service Bus, etc.)
-- Cache implementations (Redis, Memory Cache)
-
-**Tools**:
-- **xUnit** (test framework)
-- **Shouldly** or **FluentAssertions** (assertions)
-- **Testcontainers** (real database instances via Docker)
-- **WireMock.Net** (mock external HTTP APIs)
 
 **Characteristics**:
 - Slower than unit tests (seconds)
@@ -103,12 +123,6 @@ tests/Integration/Infrastructure
 - Complete feature workflows
 - HTTP status codes and response formats
 
-**Tools**:
-- **xUnit** (test framework)
-- **Shouldly** or **FluentAssertions** (assertions)
-- **Microsoft.AspNetCore.Mvc.Testing** (WebApplicationFactory)
-- **HttpClient** (for making requests)
-
 **Characteristics**:
 - Tests complete request/response cycle
 - In-memory test server (no real HTTP calls)
@@ -116,7 +130,7 @@ tests/Integration/Infrastructure
 - Verifies HTTP status codes (200, 201, 400, 404, 500, etc.)
 - Verifies response structure and content
 - Fast execution (no network overhead)
-- Can use in-memory database or test database
+- Should use  database or test database
 - Tests authentication/authorization flows
 
 **Example Structure**:
@@ -209,7 +223,7 @@ dotnet test --logger "console;verbosity=detailed"
 ### 1. Mirror Source Structure
 Organize test files to mirror the source code structure:
 - Source: `src/YourApi.Application/Features/Users/CreateUserCommandHandler.cs`
-- Test: `tests/UnitTests/Features/Users/CreateUserCommandHandlerTests.cs`
+- Test: `tests/Unit/Features/Users/CreateUserCommandHandlerTests.cs`
 
 ### 2. One Test Class Per Component
 Each component should have its own test class with focused tests.
@@ -582,47 +596,7 @@ public async Task Should_CreateUser_When_ValidEmail(string email)
 - Review test quality, not just production code
 - Share testing best practices with the team
 
-## Project Structure Example
 
-Complete example of a well-organized C# API test project:
-
-```
-YourApi.slnx
-├── src/
-│   ├── YourApi/                    # API layer
-│   ├── YourApi.Application/        # Application layer (handlers, validators)
-│   ├── YourApi.Domain/             # Domain layer (entities, value objects)
-│   └── YourApi.Infrastructure/     # Infrastructure layer (repositories, DbContext)
-└── tests/
-    ├── Unit/
-    │   ├── YourApi.UnitTests.csproj
-    │   ├── Features/
-    │   │   └── Users/
-    │   │       ├── CreateUserCommandHandlerTests.cs
-    │   │       ├── GetUserQueryHandlerTests.cs
-    │   │       └── UpdateUserCommandHandlerTests.cs
-    │   ├── Validators/
-    │   │   └── CreateUserCommandValidatorTests.cs
-    │   ├── Mappers/
-    │   │   └── UserMappingExtensionsTests.cs
-    │   └── Builders/
-    │       └── UserBuilder.cs
-    ├── Integration/
-        ├──Infastracture/
-        │   ├── YourApi.Integration.InfastractureTests.csproj
-        │   ├── Repositories/
-        │   │   └── UserRepositoryIntegrationTests.cs
-        │   ├── Persistence/
-        │   │   └── DatabaseMigrationsTests.cs
-        │   └── Fixtures/
-        │       └── DatabaseFixture.cs
-        └──API/
-            ├── YourApi.Integration.APITests.csproj
-            ├── Controllers/
-            │   └── UserManagementControllerAPITests.cs
-            └── Middlewares/
-                └── CustomMiddlewareTests.cs
-```
 
 ## Required NuGet Packages
 Rely solely on [Microsoft Testing Platform support](https://learn.microsoft.com/dotnet/core/testing/unit-testing-platform-intro)

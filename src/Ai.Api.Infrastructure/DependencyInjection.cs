@@ -16,7 +16,6 @@ public static class DependencyInjection
         services.AddDbContext<AppDbContext>(options => { options.UseNpgsql(configuration.GetConnectionString("Default")); });
 
         services.AddScoped<IApplicationRepository, ApplicationRepository>();
-        services.AddScoped<ICustomerRepository, CustomerRepository>();
         services.ConfigureWolverine(options => { options.CodeGeneration.AlwaysUseServiceLocationFor<AppDbContext>(); });
         return services;
     }

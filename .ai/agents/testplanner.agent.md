@@ -97,9 +97,8 @@ Save to: `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name_kebab}
 - [ ] Open questions listed (if any)
 
 #### Output B: Reflect & Adapt Document
-Use the template at `.ai/agents/shared/reflect-adapt-template.md` to structure your assessment.
-
-Save to: `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name_kebab}/qa.plan.reflections.md`
+Invoke the **Reflect & Adapt** skill (`.ai/skills/reflect-and-adapt.skill.md`) with:
+- `outputFile`: `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name_kebab}/qa.plan.reflections.md`
 
 **Completion Criteria:**
 - [ ] Reflection document saved
