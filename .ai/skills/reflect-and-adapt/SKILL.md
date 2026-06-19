@@ -29,7 +29,6 @@ parameters:
 ## Assessment
 
 Conduct a self-assessment of the stage that just completed across these four dimensions:
-
 1. **Violations & Showstoppers** — Skipped steps, blockers, misunderstood/missed requirements
 2. **Process Friction / Workflow Gaps** — Unclear steps, missing docs, redundant work, unaccounted dependencies
 3. **Tooling Friction / Missing Capabilities** — Tool limits, manual steps needing automation, missing integrations, context-gathering inefficiencies

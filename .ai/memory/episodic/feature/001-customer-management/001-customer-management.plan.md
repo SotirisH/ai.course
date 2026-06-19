@@ -36,6 +36,7 @@ As an administrator, I want to be able to manage customers in the system. This f
 | SI-1 | The model defines `first_name` as `string(256)` without `Traits: mandatory`, making it optional (nullable). This is unusual for a customer's first name and may be an oversight. | Low — clarification optional |
 | SI-2 | The `GET /customers` endpoint does not specify any filtering, sorting, or pagination. If the customer list grows large, this may become a performance concern. | Low — out of scope for MVP |
 | SI-3 | The story mentions "administrator" but no authentication/authorization requirements are specified in the acceptance criteria. | Low — follows existing pattern |
+| SI-4 | The `DELETE /customers/{id}` line in the work item has a stray backtick at the end (`{id}``). This is a formatting typo in the story file, not a functional issue. | Trivial |
 
 ---
 
@@ -53,7 +54,7 @@ As an administrator, I want to be able to manage customers in the system. This f
 | DTO | `CreateCustomerDto` | Descriptive + "Dto" suffix | ✅ |
 | Repository interface | `ICustomerRepository` | "I" prefix + descriptive | ✅ |
 | Repository impl | `CustomerRepository` | Entity name + "Repository" | ✅ |
-| Entity | `CustomerEntity` | Entity name + "Entity" (matches DB table name) | ✅ |
+| Entity | `Customer` | Singular, no "Entity" suffix — matches existing `Application` entity pattern | ✅ |
 | DbContext property | `Customers` | Entity name (plural) | ✅ |
 | Controller | `CustomersController` | Entity name (plural) + "Controller" | ✅ |
 | Request model | `CreateCustomerRequest` | Descriptive + "Request" | ✅ |
@@ -87,17 +88,16 @@ No new Domain files needed.
 | CREATE | `Validators/CreateCustomerCommandValidator.cs` | FluentValidation validator for create command |
 | CREATE | `Validators/UpdateCustomerCommandValidator.cs` | FluentValidation validator for update command |
 | CREATE | `Mappings/CustomerMappingExtensions.cs` | Extension methods for Command ↔ DTO mapping |
-| MODIFY | `GlobalUsings.cs` | Add global usings for `CustomerManagement` namespaces |
 
 ### 5.3 Infrastructure Layer (`src/Ai.Api.Infrastructure/`)
 
 | Action | File | Purpose |
 |--------|------|---------|
-| 🟡 Already exists | `Persistence/Entities/Customers.cs` | Persistence entity — **review before use** (named `Customers` not `CustomerEntity`, uses DataAnnotations) |
-| 🟡 Already exists | `Persistence/Configurations/CustomerEntityConfiguration.cs` | EF Core Fluent API configuration — **review before use** (references `Entities.Customers`) |
-| 🟡 Already exists | `Persistence/Context/AppDbContext.cs` | Already has `DbSet<Entities.Customers> Customers` — **review before use** |
+| CREATE | `Persistence/Entities/Customer.cs` | Persistence entity (singular, matching `Application` pattern) |
+| CREATE | `Persistence/Configurations/CustomerEntityConfiguration.cs` | EF Core Fluent API configuration |
 | CREATE | `Persistence/Repositories/CustomerRepository.cs` | Repository implementation |
 | CREATE | `Persistence/CustomerPersistenceMappingExtensions.cs` | Extension methods for Entity ↔ DTO mapping |
+| MODIFY | `Persistence/Context/AppDbContext.cs` | Add `DbSet<Customer> Customers` property |
 | MODIFY | `DependencyInjection.cs` | Register `ICustomerRepository → CustomerRepository` |
 
 ### 5.4 API Layer (`src/Ai.Api/`)
@@ -180,8 +180,6 @@ public interface ICustomerRepository
 - `FirstName` — `.HasMaxLength(256)` (nullable)
 - `Comments` — `.HasMaxLength(1024)` (nullable)
 
-> 🟡 **Note**: The existing `CustomerEntityConfiguration.cs` already implements this configuration correctly. The existing `Customers.cs` entity uses DataAnnotations (`[Key]`, `[MaxLength]`) which is redundant with the Fluent API configuration but not harmful. The entity is named `Customers` (plural) rather than `CustomerEntity` — this should be reviewed for consistency with the `Application` entity naming pattern.
-
 ### 6.7 Wolverine Integration
 
 No changes needed to the existing Wolverine setup in `Application/DependencyInjection.cs` — handler discovery via `typeof(DependencyInjection).Assembly` will automatically pick up the new Customer handlers.
@@ -199,8 +197,8 @@ The existing `ExceptionHandlingMiddleware` already handles all these patterns vi
 ### 6.9 Mapping Flow
 
 ```
-Request: CreateCustomerRequest → CreateCustomerCommand → CreateCustomerDto → CustomerEntity → DB
-Response: DB → CustomerEntity → CustomerDto → CustomerResponse
+Request: CreateCustomerRequest → CreateCustomerCommand → CreateCustomerDto → Customer (entity) → DB
+Response: DB → Customer (entity) → CustomerDto → CustomerResponse
 ```
 
 ---
@@ -219,19 +217,18 @@ Response: DB → CustomerEntity → CustomerDto → CustomerResponse
 | 8 | Application | Create `DeleteCustomerCommand` + handler | Steps 1, 2 |
 | 9 | Application | Create `GetCustomerByIdQuery` + handler | Steps 1, 2 |
 | 10 | Application | Create `GetCustomersQuery` + handler | Steps 1, 2 |
-| 11 | Application | Modify `GlobalUsings.cs` | Steps 6-10 |
-| 12 | Infrastructure | Review existing `Customers.cs` entity — rename to `CustomerEntity` for consistency | — |
-| 13 | Infrastructure | Review existing `CustomerEntityConfiguration.cs` — verify Fluent API config | Step 12 |
-| 14 | Infrastructure | Review `AppDbContext` — verify `Customers` DbSet | Steps 12, 13 |
-| 15 | Infrastructure | Create persistence mapping extensions | Steps 2, 3, 12 |
-| 16 | Infrastructure | Create `CustomerRepository` | Steps 1, 12, 14, 15 |
-| 17 | Infrastructure | Modify `DependencyInjection.cs` — register repository | Step 16 |
-| 18 | API | Create `CreateCustomerRequest` model | — |
-| 19 | API | Create `UpdateCustomerRequest` model | — |
-| 20 | API | Create `CustomerResponse` model | — |
-| 21 | API | Create API mapping extensions (Request↔Command, Dto↔Response) | Steps 2, 6-10, 18-20 |
-| 22 | API | Create `CustomersController` | Steps 6-10, 21 |
-| 23 | — | Create EF Core migration for `Customers` table (if not already migrated) | Step 14 |
+| 11 | Infrastructure | Create `Customer` entity | — |
+| 12 | Infrastructure | Create `CustomerEntityConfiguration` | Step 11 |
+| 13 | Infrastructure | Modify `AppDbContext` — add `Customers` DbSet | Step 11 |
+| 14 | Infrastructure | Create persistence mapping extensions | Steps 2, 3, 11 |
+| 15 | Infrastructure | Create `CustomerRepository` | Steps 1, 11, 13, 14 |
+| 16 | Infrastructure | Modify `DependencyInjection.cs` — register repository | Step 15 |
+| 17 | API | Create `CreateCustomerRequest` model | — |
+| 18 | API | Create `UpdateCustomerRequest` model | — |
+| 19 | API | Create `CustomerResponse` model | — |
+| 20 | API | Create API mapping extensions (Request↔Command, Dto↔Response) | Steps 2, 6-10, 17-19 |
+| 21 | API | Create `CustomersController` | Steps 6-10, 20 |
+| 22 | — | Create EF Core migration for `Customers` table | Step 13 |
 
 ---
 
@@ -250,8 +247,8 @@ Response: DB → CustomerEntity → CustomerDto → CustomerResponse
 | A9 | `ICustomerRepository` lives in Application layer (not Domain) | Per architecture doc: "Not repository interfaces, these should be in Application layer." |
 | A10 | Hard delete (not soft delete) | Story mentions `DELETE /customers/{id}` but does not mention soft delete; follows same pattern as Application Management. |
 | A11 | Wolverine handler auto-discovery will cover new Customer handlers | The existing `DependencyInjection.cs` uses `opts.Discovery.IncludeAssembly(typeof(DependencyInjection).Assembly)` which auto-discovers all handlers in the Application assembly — no additional registration needed. |
-| A12 | Existing `Customers.cs` entity should be renamed to `CustomerEntity` for consistency | The existing `Application.cs` entity is named `Application` (singular, no "Entity" suffix). The `Customers.cs` entity is named `Customers` (plural). For consistency with the existing pattern, the entity should be renamed to `CustomerEntity` or kept as `Customers` if that's the preferred convention. This needs review. |
-| A13 | Existing `CustomerEntityConfiguration.cs` and `AppDbContext` are correctly configured | Pre-scaffold detection found these files already exist with proper configuration. They should be reviewed but likely only need minor adjustments. |
+| A12 | Entity named `Customer` (singular, no "Entity" suffix) | The existing `Application` entity uses singular naming without "Entity" suffix. Following this established pattern for consistency. |
+| A13 | Entity uses both DataAnnotations and Fluent API configuration | The existing `Application` entity uses `[Key]` and `[MaxLength]` DataAnnotations alongside Fluent API in `ApplicationEntityConfiguration`. Following the same dual-configuration pattern for consistency, even though it's redundant. |
 
 ---
 
@@ -262,4 +259,3 @@ Response: DB → CustomerEntity → CustomerDto → CustomerResponse
 | Q1 | Should `first_name` be mandatory despite the model definition not listing it as such? (See Spec Issue SI-1) | Validator design, DB schema, API contract |
 | Q2 | Should `GET /customers` support sorting or filtering in the initial implementation? | Query handler design |
 | Q3 | Is the `tax_id` expected to be a specific format (e.g., SSN, VAT, or free text)? | Validator design |
-| Q4 | Should the existing `Customers.cs` entity be renamed to `CustomerEntity` for consistency with the naming convention, or kept as `Customers` to match the existing `Application` entity pattern (which is singular without "Entity" suffix)? | Entity naming, all references in DbContext, Configuration, and Repository |
