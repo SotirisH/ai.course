@@ -10,154 +10,104 @@
 
 ## Story Summary
 
-As an administrator, the system must provide full CRUD (Create, Read, Update, Delete) and list capabilities for Customers. Each Customer has a unique identifier (GUID), first name (optional), last name (mandatory), tax ID (mandatory, unique), and optional comments. The feature exposes a RESTful API at `/customers`.
+As an administrator, I want to be able to manage customers in the system. The feature provides full CRUD (Create, Read, Update, Delete) and list operations for Customer entities via a RESTful API.
 
 ---
 
 ## Acceptance Criteria
 
-**Given** an administrator
-**When** they send a `POST /customers` with valid `last_name` and `tax_id`
-**Then** a new Customer is created and returned with a `201 Created` status.
+**Given** an administrator is authenticated in the system
+**When** they interact with the `/customers` endpoints
+**Then** they should be able to:
 
-**Given** an administrator
-**When** they send a `PUT /customers/{id}` with updated fields
-**Then** the Customer is updated and returned with a `200 OK` status.
+| Operation | Method | Endpoint | Description |
+|-----------|--------|----------|-------------|
+| Create | `POST` | `/customers` | Create a new customer |
+| Update | `PUT` | `/customers/{id}` | Update an existing customer |
+| Get by ID | `GET` | `/customers/{id}` | Retrieve a single customer |
+| List all | `GET` | `/customers` | Retrieve all customers |
+| Delete | `DELETE` | `/customers/{id}` | Delete a customer |
 
-**Given** an administrator
-**When** they send a `GET /customers/{id}` for an existing Customer
-**Then** the Customer is returned with a `200 OK` status.
+### Customer Model
 
-**Given** an administrator
-**When** they send a `GET /customers`
-**Then** all Customers are returned as a list with a `200 OK` status.
-
-**Given** an administrator
-**When** they send a `DELETE /customers/{id}` for an existing Customer
-**Then** the Customer is deleted and `204 No Content` is returned.
-
-**Given** a duplicate `tax_id` is submitted
-**When** creating or updating a Customer
-**Then** a `409 Conflict` response is returned.
-
-**Given** a non-existent Customer ID is requested
-**When** fetching, updating, or deleting
-**Then** a `404 Not Found` response is returned.
+| Field | Type | Constraints |
+|-------|------|-------------|
+| `id` | `Guid` | Primary key |
+| `first_name` | `string(256)` | Optional |
+| `last_name` | `string(256)` | **Mandatory** |
+| `tax_id` | `string(16)` | **Mandatory**, **Unique** |
+| `comments` | `string(1024)` | Optional |
 
 ---
 
-## Spec Issues
+## Spec Consistency Check
 
-| # | Issue | Severity |
-|---|-------|----------|
-| 1 | **`first_name` mandatory?** — `last_name` and `tax_id` are explicitly marked "Traits: mandatory", but `first_name` has no such trait. This could be intentional (first name is optional) or an omission. | Medium |
-| 2 | **No pagination on `GET /customers`** — Returning all customers without pagination could become a performance issue at scale. | Low |
-| 3 | **No search/filter on `GET /customers`** — The story provides no query parameters for filtering (by name, by tax_id). | Low |
-
----
-
-## Pre-Scaffold Detection Results
-
-| Layer | Scan Pattern | Result |
-|-------|-------------|--------|
-| Domain | `*customer*` | No matches |
-| Application | `*customer*` | No matches |
-| Infrastructure | `*customer*` | No matches |
-| API | `*customer*` | No matches |
-
-**Conclusion**: All files are new (`CREATE`). No existing customer-related code to review.
+| # | Finding | Severity |
+|---|---------|----------|
+| 1 | `first_name` is not marked mandatory while `last_name` is — this asymmetry is intentional per the model spec | ✅ Info |
+| 2 | `tax_id` has a `unique` constraint — requires a unique database index | ✅ Info |
+| 3 | Model uses snake_case naming (database convention); C# code will use PascalCase | ✅ Info |
+| 4 | No contradictions between story, acceptance criteria, and model definition | ✅ Clean |
 
 ---
 
 ## File Change List
 
-### Application Layer
+All files are **CREATE** (no existing customer-related files found in pre-scaffold scan).
 
-| # | File | Action | Path |
-|---|------|--------|------|
-| A1 | `CustomerDto.cs` | CREATE | `src/Ai.Api.Application/Features/CustomerManagement/DTOs/` |
-| A2 | `CreateCustomerDto.cs` | CREATE | `src/Ai.Api.Application/Features/CustomerManagement/DTOs/` |
-| A3 | `CreateCustomerCommand.cs` (command + handler) | CREATE | `src/Ai.Api.Application/Features/CustomerManagement/Commands/` |
-| A4 | `UpdateCustomerCommand.cs` (command + handler) | CREATE | `src/Ai.Api.Application/Features/CustomerManagement/Commands/` |
-| A5 | `DeleteCustomerCommand.cs` (command + handler) | CREATE | `src/Ai.Api.Application/Features/CustomerManagement/Commands/` |
-| A6 | `GetCustomerByIdQuery.cs` (query + handler) | CREATE | `src/Ai.Api.Application/Features/CustomerManagement/Queries/` |
-| A7 | `GetCustomersQuery.cs` (query + handler) | CREATE | `src/Ai.Api.Application/Features/CustomerManagement/Queries/` |
-| A8 | `ICustomerRepository.cs` | CREATE | `src/Ai.Api.Application/Interfaces/Repositories/` |
-| A9 | `CreateCustomerCommandValidator.cs` | CREATE | `src/Ai.Api.Application/Validators/` |
-| A10 | `UpdateCustomerCommandValidator.cs` | CREATE | `src/Ai.Api.Application/Validators/` |
-| A11 | `CustomerMappingExtensions.cs` | CREATE | `src/Ai.Api.Application/Mappings/` |
+### Domain Layer (`src/Ai.Api.Domain/`)
+*No new files required.* The existing `DomainException` class is sufficient for this feature.
 
-### Infrastructure Layer
+### Application Layer (`src/Ai.Api.Application/`)
 
-| # | File | Action | Path |
-|---|------|--------|------|
-| I1 | `Customer.cs` (entity) | CREATE | `src/Ai.Api.Infrastructure/Persistence/Entities/` |
-| I2 | `CustomerEntityConfiguration.cs` | CREATE | `src/Ai.Api.Infrastructure/Persistence/Configurations/` |
-| I3 | `CustomerRepository.cs` | CREATE | `src/Ai.Api.Infrastructure/Persistence/Repositories/` |
-| I4 | `CustomerPersistenceMappingExtensions.cs` | CREATE | `src/Ai.Api.Infrastructure/Persistence/` |
-| I5 | `AppDbContext.cs` | UPDATE | `src/Ai.Api.Infrastructure/Persistence/Context/` |
-| I6 | `DependencyInjection.cs` | UPDATE | `src/Ai.Api.Infrastructure/` |
+| # | File | Action | Purpose |
+|---|------|--------|---------|
+| 1 | `Features/CustomerManagement/DTOs/CustomerDto.cs` | CREATE | Read/output DTO for Customer |
+| 2 | `Features/CustomerManagement/DTOs/CreateCustomerDto.cs` | CREATE | Input DTO for creating a Customer |
+| 3 | `Features/CustomerManagement/Commands/CreateCustomerCommand.cs` | CREATE | Command + Handler for creating a Customer |
+| 4 | `Features/CustomerManagement/Commands/UpdateCustomerCommand.cs` | CREATE | Command + Handler for updating a Customer |
+| 5 | `Features/CustomerManagement/Commands/DeleteCustomerCommand.cs` | CREATE | Command + Handler for deleting a Customer |
+| 6 | `Features/CustomerManagement/Queries/GetCustomerByIdQuery.cs` | CREATE | Query + Handler for getting a Customer by ID |
+| 7 | `Features/CustomerManagement/Queries/GetCustomersQuery.cs` | CREATE | Query + Handler for listing all Customers |
+| 8 | `Interfaces/Repositories/ICustomerRepository.cs` | CREATE | Repository interface for Customer data access |
+| 9 | `Mappings/CustomerMappingExtensions.cs` | CREATE | Extension methods for mapping commands → DTOs |
+| 10 | `Validators/CreateCustomerCommandValidator.cs` | CREATE | FluentValidation validator for CreateCustomerCommand |
+| 11 | `Validators/UpdateCustomerCommandValidator.cs` | CREATE | FluentValidation validator for UpdateCustomerCommand |
 
-### API Layer
+### Infrastructure Layer (`src/Ai.Api.Infrastructure/`)
 
-| # | File | Action | Path |
-|---|------|--------|------|
-| P1 | `CustomersController.cs` | CREATE | `src/Ai.Api/Controllers/` |
-| P2 | `CreateCustomerRequest.cs` | CREATE | `src/Ai.Api/Models/Requests/` |
-| P3 | `UpdateCustomerRequest.cs` | CREATE | `src/Ai.Api/Models/Requests/` |
-| P4 | `CustomerResponse.cs` | CREATE | `src/Ai.Api/Models/Responses/` |
-| P5 | `CustomerMappingExtensions.cs` | CREATE | `src/Ai.Api/Mappers/` |
+| # | File | Action | Purpose |
+|---|------|--------|---------|
+| 12 | `Persistence/Entities/Customer.cs` | CREATE | EF Core entity for the `Customers` table |
+| 13 | `Persistence/Configurations/CustomerEntityConfiguration.cs` | CREATE | Fluent API configuration for Customer entity |
+| 14 | `Persistence/Repositories/CustomerRepository.cs` | CREATE | Repository implementation for Customer |
+| 15 | `Persistence/CustomerPersistenceMappingExtensions.cs` | CREATE | Extension methods for entity ↔ DTO mapping |
+| 16 | `Persistence/Context/AppDbContext.cs` | MODIFY | Add `DbSet<Customer>` property |
 
-### Domain Layer
+### API Layer (`src/Ai.Api/`)
 
-No changes required. The existing `InvalidOperationException` from the framework is used for not-found and duplicate-key scenarios (matching the ApplicationManagement pattern).
+| # | File | Action | Purpose |
+|---|------|--------|---------|
+| 17 | `Controllers/CustomersController.cs` | CREATE | API controller for `/customers` endpoints |
+| 18 | `Models/Requests/CreateCustomerRequest.cs` | CREATE | Request model for POST `/customers` |
+| 19 | `Models/Requests/UpdateCustomerRequest.cs` | CREATE | Request model for PUT `/customers/{id}` |
+| 20 | `Models/Responses/CustomerResponse.cs` | CREATE | Response model for Customer endpoints |
+| 21 | `Mappers/CustomerMappingExtensions.cs` | CREATE | Extension methods for request → command and DTO → response |
+
+### Dependency Injection
+
+| # | File | Action | Purpose |
+|---|------|--------|---------|
+| 22 | `src/Ai.Api.Infrastructure/DependencyInjection.cs` | MODIFY | Register `ICustomerRepository` / `CustomerRepository` |
 
 ---
 
 ## Implementation Details
 
-### Data Model (Database Table: `Customers`)
+### 1. DTOs (Application Layer)
 
-| Column | Type | Constraints |
-|--------|------|-------------|
-| `Id` | `Guid` | PK, generated via `Guid.CreateVersion7()` |
-| `FirstName` | `string(256)` | Optional (TBD — see Question 1; implemented as optional unless clarified) |
-| `LastName` | `string(256)` | Required (`IsRequired()`) |
-| `TaxId` | `string(16)` | Required, **Unique Index** |
-| `Comments` | `string(1024)` | Optional |
-
-### API Contract
-
-**`POST /customers`**
-- Request: `CreateCustomerRequest` → `{ FirstName?, LastName, TaxId, Comments? }`
-- Response: `201 Created` + `CustomerResponse` body
-- Errors: `400` (validation), `409` (duplicate tax_id)
-
-**`PUT /customers/{id:guid}`**
-- Request: `UpdateCustomerRequest` → `{ FirstName?, LastName, TaxId, Comments? }`
-- Response: `200 OK` + `CustomerResponse` body
-- Errors: `400` (validation), `404` (not found), `409` (duplicate tax_id)
-
-**`GET /customers/{id:guid}`**
-- Response: `200 OK` + `CustomerResponse` body
-- Errors: `404` (not found)
-
-**`GET /customers`**
-- Response: `200 OK` + `List<CustomerResponse>` body
-
-**`DELETE /customers/{id:guid}`**
-- Response: `204 No Content`
-- Errors: `404` (not found)
-
-### Layer-by-Layer Design
-
-#### 1. Domain Layer
-No changes. The existing `InvalidOperationException` is used for not-found and duplicate-key scenarios (following the established `ApplicationManagement` pattern).
-
-#### 2. Application Layer — DTOs
-
+**CustomerDto** — the read/output contract:
 ```csharp
-// CustomerDto.cs
 public sealed record CustomerDto
 {
     public Guid Id { get; init; }
@@ -166,8 +116,10 @@ public sealed record CustomerDto
     public string TaxId { get; init; } = string.Empty;
     public string? Comments { get; init; }
 }
+```
 
-// CreateCustomerDto.cs
+**CreateCustomerDto** — the input contract for creation:
+```csharp
 public sealed record CreateCustomerDto
 {
     public string FirstName { get; init; } = string.Empty;
@@ -177,17 +129,18 @@ public sealed record CreateCustomerDto
 }
 ```
 
-#### 3. Application Layer — Commands & Queries (Wolverine CQRS)
+### 2. Commands & Queries (Application Layer)
 
-Following the established `ApplicationManagement` pattern: each command/query record is co-located with its handler in the same file.
+Following the existing `ApplicationManagement` pattern:
+- **CreateCustomerCommand** → `CreateCustomerCommandHandler` returns `CustomerDto`
+- **UpdateCustomerCommand** → `UpdateCustomerCommandHandler` returns `CustomerDto` (throws `InvalidOperationException` if not found)
+- **DeleteCustomerCommand** → `DeleteCustomerCommandHandler` returns void (throws `InvalidOperationException` if not found)
+- **GetCustomerByIdQuery** → `GetCustomerByIdQueryHandler` returns `CustomerDto` (throws `InvalidOperationException` if not found)
+- **GetCustomersQuery** → `GetCustomersQueryHandler` returns `IReadOnlyList<CustomerDto>`
 
-- **CreateCustomerCommand** → handler maps command → `CreateCustomerDto`, calls `ICustomerRepository.AddAsync`
-- **UpdateCustomerCommand** → handler fetches existing, applies changes via `with` expression, calls `ICustomerRepository.UpdateAsync`
-- **DeleteCustomerCommand** → handler verifies existence, calls `ICustomerRepository.DeleteAsync`
-- **GetCustomerByIdQuery** → handler calls `ICustomerRepository.GetByIdAsync`, throws `InvalidOperationException` if not found
-- **GetCustomersQuery** → handler calls `ICustomerRepository.GetAllAsync`
+All handlers use Wolverine mediator pattern (command/query in same file as handler).
 
-#### 4. Application Layer — Repository Interface
+### 3. Repository Interface (Application Layer)
 
 ```csharp
 public interface ICustomerRepository
@@ -200,154 +153,112 @@ public interface ICustomerRepository
 }
 ```
 
-#### 5. Application Layer — Validators
+### 4. Entity & Configuration (Infrastructure Layer)
 
-- **CreateCustomerCommandValidator**: `FirstName` max 256, `LastName` required + max 256, `TaxId` required + max 16, `Comments` max 1024
-- **UpdateCustomerCommandValidator**: `Id` not empty + same field rules as create
+**Customer entity** — maps to `Customers` table:
+- `Id` (Guid, PK)
+- `FirstName` (string, max 256)
+- `LastName` (string, max 256, required)
+- `TaxId` (string, max 16, required, unique index)
+- `Comments` (string, max 1024, nullable)
 
-Follows the `CreateApplicationCommandValidator` / `UpdateApplicationCommandValidator` pattern exactly — same structure, same `WithMessage` style.
-
-#### 6. Application Layer — Mappings
-
-`CustomerMappingExtensions` (static class):
-- `CreateCustomerCommand → CreateCustomerDto`
-- `UpdateCustomerCommand.ApplyTo(CustomerDto)` → `CustomerDto` (using `with` expression)
-
-#### 7. Infrastructure Layer — Entity
-
-```csharp
-// Customer.cs
-public class Customer
-{
-    [Key]
-    public Guid Id { get; set; }
-
-    [MaxLength(256)]
-    public string FirstName { get; set; } = string.Empty;
-
-    [MaxLength(256)]
-    public string LastName { get; set; } = string.Empty;
-
-    [MaxLength(16)]
-    public string TaxId { get; set; } = string.Empty;
-
-    [MaxLength(1024)]
-    public string? Comments { get; set; }
-}
-```
-
-Note: DataAnnotations (`[Key]`, `[MaxLength]`) are kept for consistency with the existing `Application` entity pattern. Fluent API in `CustomerEntityConfiguration` provides the definitive configuration.
-
-#### 8. Infrastructure Layer — Entity Configuration
-
-`CustomerEntityConfiguration` implements `IEntityTypeConfiguration<Customer>`:
-- `ToTable("Customers")`
-- `HasKey(x => x.Id)`
-- `FirstName` → `.HasMaxLength(256)` (`.IsRequired()` TBD per Question 1 — NOT required by default based on story)
+**Fluent API configuration** (`CustomerEntityConfiguration`):
+- Table: `"Customers"`
+- PK on `Id`
 - `LastName` → `.IsRequired().HasMaxLength(256)`
-- `TaxId` → `.IsRequired().HasMaxLength(16)` + `HasIndex(x => x.TaxId).IsUnique()`
+- `TaxId` → `.IsRequired().HasMaxLength(16)`
+- Unique index on `TaxId`
+- `FirstName` → `.HasMaxLength(256)`
 - `Comments` → `.HasMaxLength(1024)`
 
-#### 9. Infrastructure Layer — Repository
+### 5. Repository Implementation (Infrastructure Layer)
 
-`CustomerRepository(AppDbContext dbContext)` implements `ICustomerRepository`, following the exact `ApplicationRepository` pattern:
-- `GetByIdAsync` → `AsNoTracking().FirstOrDefaultAsync`, returns `entity?.ToDto()`
-- `GetAllAsync` → `AsNoTracking().ToListAsync`, maps each to DTO
-- `AddAsync` → maps DTO to entity, adds, saves with duplicate-key catch for `TaxId`
-- `UpdateAsync` → fetches entity (tracked), applies changes via `dto.ApplyTo()`, saves with duplicate-key catch
-- `DeleteAsync` → fetches entity, removes, saves
-- Private `IsDuplicateKeyViolation(DbUpdateException)` helper method
+Follows the exact pattern of `ApplicationRepository`:
+- `GetByIdAsync`: `AsNoTracking().FirstOrDefaultAsync()`, maps entity → DTO
+- `GetAllAsync`: `AsNoTracking().ToListAsync()`, maps each entity → DTO
+- `AddAsync`: maps DTO → entity, `AddAsync()`, `SaveChangesAsync()`, catches `DbUpdateException` for duplicate `tax_id`
+- `UpdateAsync`: loads tracked entity, applies DTO values, `SaveChangesAsync()`, catches `DbUpdateException` for duplicate `tax_id`
+- `DeleteAsync`: loads entity, `Remove()`, `SaveChangesAsync()`
+- `IsDuplicateKeyViolation` helper for detecting unique constraint violations
 
-#### 10. Infrastructure Layer — Persistence Mapping Extensions
+### 6. Validators (Application Layer)
 
-Internal static class `CustomerPersistenceMappingExtensions`:
-- `ToDto(Customer)` → `CustomerDto`
-- `ToEntity(CreateCustomerDto)` → `Customer` (generates `Guid.CreateVersion7()` for Id)
-- `ApplyTo(CustomerDto, Customer)` → mutates entity properties
+**CreateCustomerCommandValidator**:
+- `LastName` → `.NotEmpty()` (mandatory)
+- `TaxId` → `.NotEmpty()` (mandatory), `.MaximumLength(16)`
+- `FirstName` → `.MaximumLength(256)`
+- `Comments` → `.MaximumLength(1024)`
 
-#### 11. Infrastructure Layer — DbContext Update
+**UpdateCustomerCommandValidator**:
+- `Id` → `.NotEmpty()`
+- Same field validations as Create
 
-In `AppDbContext.cs`: add `public DbSet<Customer> Customers => Set<Customer>();`
+### 7. API Controller (API Layer)
 
-#### 12. Infrastructure Layer — DI Update
+**CustomersController** — follows `ApplicationsController` pattern:
+- Uses `IMessageBus` (Wolverine mediator)
+- `POST /customers` → `CreateCustomerRequest` → `CreateCustomerCommand` → returns `201 Created` with `CustomerResponse`
+- `PUT /customers/{id:guid}` → `UpdateCustomerRequest` + route `id` → `UpdateCustomerCommand` → returns `200 OK` with `CustomerResponse`
+- `GET /customers/{id:guid}` → `GetCustomerByIdQuery` → returns `200 OK` with `CustomerResponse`
+- `GET /customers` → `GetCustomersQuery` → returns `200 OK` with `IReadOnlyList<CustomerResponse>`
+- `DELETE /customers/{id:guid}` → `DeleteCustomerCommand` → returns `204 NoContent`
+- Uses `[ApiConventionMethod]` where applicable
+- `[ProducesResponseType(StatusCodes.Status409Conflict)]` on Create and Update (for duplicate `tax_id`)
 
-In `DependencyInjection.cs`: add `services.AddScoped<ICustomerRepository, CustomerRepository>();`
+### 8. Request/Response Models (API Layer)
 
-#### 13. API Layer — Request/Response Models
+**CreateCustomerRequest**: `FirstName`, `LastName`, `TaxId`, `Comments`
+**UpdateCustomerRequest**: `FirstName`, `LastName`, `TaxId`, `Comments`
+**CustomerResponse**: `Id`, `FirstName`, `LastName`, `TaxId`, `Comments`
 
-```csharp
-// CreateCustomerRequest.cs
-public sealed record CreateCustomerRequest
-{
-    public string FirstName { get; init; } = string.Empty;
-    public string LastName { get; init; } = string.Empty;
-    public string TaxId { get; init; } = string.Empty;
-    public string? Comments { get; init; }
-}
+### 9. Mapping Extensions
 
-// UpdateCustomerRequest.cs — same shape as Create
-public sealed record UpdateCustomerRequest
-{
-    public string FirstName { get; init; } = string.Empty;
-    public string LastName { get; init; } = string.Empty;
-    public string TaxId { get; init; } = string.Empty;
-    public string? Comments { get; init; }
-}
+**API Layer** (`CustomerMappingExtensions`):
+- `CreateCustomerRequest.ToCommand()` → `CreateCustomerCommand`
+- `UpdateCustomerRequest.ToCommand(Guid id)` → `UpdateCustomerCommand`
+- `Guid.ToCommand()` → `DeleteCustomerCommand` (extension on Guid)
+- `CustomerDto.ToResponse()` → `CustomerResponse`
+- `IEnumerable<CustomerDto>.ToResponseList()` → `List<CustomerResponse>`
 
-// CustomerResponse.cs
-public sealed record CustomerResponse
-{
-    public Guid Id { get; init; }
-    public string FirstName { get; init; } = string.Empty;
-    public string LastName { get; init; } = string.Empty;
-    public string TaxId { get; init; } = string.Empty;
-    public string? Comments { get; init; }
-}
-```
+**Application Layer** (`CustomerMappingExtensions`):
+- `CreateCustomerCommand.ToDto()` → `CreateCustomerDto`
+- `UpdateCustomerCommand.ApplyTo(CustomerDto existing)` → `CustomerDto` (with-expression)
 
-#### 14. API Layer — Mappings
+**Infrastructure Layer** (`CustomerPersistenceMappingExtensions`):
+- `CustomerEntity.ToDto()` → `CustomerDto`
+- `CreateCustomerDto.ToEntity()` → `CustomerEntity` (generates `Guid.CreateVersion7()`)
+- `CustomerDto.ApplyTo(CustomerEntity entity)` → void (mutates entity)
 
-`CustomerMappingExtensions` (static class) in `src/Ai.Api/Mappers/`:
-- `CreateCustomerRequest → CreateCustomerCommand`
-- `UpdateCustomerRequest + Guid → UpdateCustomerCommand`
-- `Guid → DeleteCustomerCommand`
-- `CustomerDto → CustomerResponse`
-- `IEnumerable<CustomerDto> → List<CustomerResponse>`
+### 10. Error Handling
 
-#### 15. API Layer — Controller
+The existing `ExceptionHandlingMiddleware` already handles:
+- `ValidationException` → 400 Bad Request
+- `InvalidOperationException` with "was not found" → 404 Not Found
+- `InvalidOperationException` with "already exists" → 409 Conflict
 
-`CustomersController(IMessageBus messageBus) : ControllerBase`:
-- `[Route("customers")]`
-- `[HttpPost]` → `CreateCustomerCommand`, `CreatedAtAction(nameof(GetById), ...)`
-- `[HttpGet]` → `GetCustomersQuery`
-- `[HttpGet("{id:guid}")]` → `GetCustomerByIdQuery`
-- `[HttpPut("{id:guid}")]` → `UpdateCustomerCommand`
-- `[HttpDelete("{id:guid}")]` → `DeleteCustomerCommand`, `NoContent()`
-- `[ProducesResponseType(StatusCodes.Status409Conflict)]` on POST and PUT
-- `[ApiConventionMethod]` for standard status codes
-- Error handling via Wolverine's built-in exception handling (the existing pattern does not use try-catch in controllers)
+No middleware changes needed. Handlers throw `InvalidOperationException` for not-found and duplicate scenarios, which the middleware maps correctly.
 
 ---
 
 ## Implementation Order
 
-| Step | Files | Layer | Rationale |
-|------|-------|-------|-----------|
-| 1 | I1, I2 | Infrastructure | Database schema foundation — entity and configuration |
-| 2 | A1, A2 | Application | Data contracts — DTOs |
-| 3 | A8 | Application | Repository interface — abstraction |
-| 4 | I4 | Infrastructure | Entity ↔ DTO mapping extensions |
-| 5 | I3 | Infrastructure | Repository implementation |
-| 6 | I5 | Infrastructure | Register `DbSet<Customer>` in DbContext |
-| 7 | I6 | Infrastructure | Register `ICustomerRepository` in DI |
-| 8 | A3, A4, A5, A6, A7 | Application | Commands & Queries (Wolverine handlers) |
-| 9 | A11 | Application | Command → DTO mapping extensions |
-| 10 | A9, A10 | Application | FluentValidation validators |
-| 11 | P2, P3, P4 | API | API request/response models |
-| 12 | P5 | API | API ↔ Application mapping extensions |
-| 13 | P1 | API | Controller |
-
-**Rationale**: Bottom-up dependency order — Infrastructure entities first, then contracts (DTOs, interfaces), then implementations (repository, handlers), then validators, and finally the API surface. This ensures each layer compiles before the next depends on it.
+1. **Domain Layer** — No changes needed
+2. **Application Layer — DTOs** (`CustomerDto`, `CreateCustomerDto`)
+3. **Application Layer — Repository Interface** (`ICustomerRepository`)
+4. **Application Layer — Commands & Queries** (all 5 handler files)
+5. **Application Layer — Validators** (Create + Update)
+6. **Application Layer — Mappings** (`CustomerMappingExtensions`)
+7. **Infrastructure Layer — Entity** (`Customer`)
+8. **Infrastructure Layer — Entity Configuration** (`CustomerEntityConfiguration`)
+9. **Infrastructure Layer — Persistence Mappings** (`CustomerPersistenceMappingExtensions`)
+10. **Infrastructure Layer — Repository** (`CustomerRepository`)
+11. **Infrastructure Layer — DbContext** (add `DbSet<Customer>`)
+12. **Infrastructure Layer — DI Registration** (register `ICustomerRepository`)
+13. **API Layer — Request/Response Models**
+14. **API Layer — Mappings** (`CustomerMappingExtensions`)
+15. **API Layer — Controller** (`CustomersController`)
+16. **Database Migration** — create and apply EF Core migration
+17. **Testing** — unit tests, integration tests, API tests
 
 ---
 
@@ -355,26 +266,22 @@ public sealed record CustomerResponse
 
 | # | Assumption | Justification |
 |---|-----------|---------------|
-| AS1 | `first_name` is **optional** (not mandatory) | The story model explicitly marks `last_name` and `tax_id` with "Traits: mandatory" but omits it for `first_name`. This is treated as intentional — a customer may have only a last name. If incorrect, this is a one-line change. |
-| AS2 | The existing Wolverine mediator pattern (`IMessageBus`) is used for command/query dispatch | Matches the established `ApplicationsController` pattern. |
-| AS3 | No authentication/authorization middleware is needed at this stage | The story says "As an administrator" but no auth requirements are specified in acceptance criteria. The existing `ApplicationsController` also has no auth attributes. |
-| AS4 | `Guid.CreateVersion7()` is used for ID generation | Follows architecture rules and the existing `Application` entity pattern. |
-| AS5 | The existing `AppDbContext` connection string `"Default"` is reused | No separate connection string is specified for Customers. |
-| AS6 | Pagination is not implemented for `GET /customers` | The story does not mention pagination. Added as a question. |
-| AS7 | Hard delete is used (not soft delete) | The story says "delete" with no qualifiers; the existing `Application` pattern uses hard deletes. |
-| AS8 | The `Customers` table name is pluralized | Follows the existing `Applications` table naming convention. |
-| AS9 | `tax_id` is user-supplied (not auto-generated) | The model defining `tax_id` with "Traits: mandatory" implies it's an input field, not system-generated. |
-| AS10 | Duplicate `tax_id` detection relies on PostgreSQL unique index + `DbUpdateException` catch pattern | Matches the `ApplicationRepository` pattern for unique constraint violations. |
-| AS11 | The existing error handling pattern (throwing `InvalidOperationException` from handlers, letting Wolverine/ASP.NET middleware convert to HTTP responses) is sufficient | Matches the `ApplicationsController` pattern — no try-catch in controllers. |
+| A1 | `first_name` is optional (not mandatory) | Only `last_name` is marked "mandatory" in the model spec. `first_name` has no such trait. |
+| A2 | `tax_id` uniqueness is enforced at the database level via a unique index | The model spec marks `tax_id` as "unique". Following the existing pattern (unique index on `Name` in `ApplicationEntityConfiguration`), this is enforced via Fluent API configuration. |
+| A3 | No authentication/authorization is implemented at this stage | The story says "As an administrator" but the existing `ApplicationsController` has no auth. Auth is a cross-cutting concern to be added later. |
+| A4 | The `Customers` table name is plural | Following the existing `Applications` table naming convention. |
+| A5 | `Guid.CreateVersion7()` is used for ID generation | Per architecture rules, and following the existing `ApplicationPersistenceMappingExtensions` pattern. |
+| A6 | Wolverine mediator (`IMessageBus`) is used for command/query dispatch | Following the existing `ApplicationsController` pattern. |
+| A7 | No custom domain exceptions are needed | The existing `InvalidOperationException` pattern (caught by middleware) is sufficient for not-found and duplicate scenarios. |
+| A8 | The `tax_id` field maps to `TaxId` in C# (PascalCase) | Standard .NET naming convention. Snake_case in the model spec is the database convention. |
 
 ---
 
-## Questions
+## Open Questions
 
 | # | Question | Impact |
 |---|----------|--------|
-| Q1 | Is `first_name` mandatory or optional? Only `last_name` and `tax_id` are marked "Traits: mandatory". | Affects FluentValidation rules and EF Core `.IsRequired()` configuration on `FirstName`. Currently planned as optional. |
-| Q2 | Should `GET /customers` include pagination? If so, what page size and page parameter names? | Affects `GetCustomersQuery`, repository method signature, and controller response format. |
-| Q3 | Should `GET /customers` support search/filter parameters (e.g., by `tax_id`, by `last_name`)? | Would require adding query parameters and repository filtering logic. |
-| Q4 | Should `tax_id` be validated against a specific format (e.g., regex for a tax ID format)? | Affects the `CreateCustomerCommandValidator` and `UpdateCustomerCommandValidator` rules. |
-| Q5 | Is there any need for batch operations (bulk create/delete)? | Would require additional commands/queries beyond the current CRUD surface. |
+| Q1 | Should `first_name` also be mandatory? The model spec only marks `last_name` as mandatory, but this seems asymmetric. | Changes validator and entity configuration |
+| Q2 | Should `tax_id` have any format validation (e.g., regex pattern for tax ID format)? | Adds validation rule in FluentValidation |
+| Q3 | Should the GET `/customers` endpoint support pagination, filtering, or sorting? The acceptance criteria only specifies a simple list. | Could significantly change the query handler and repository |
+| Q4 | Should there be a unique constraint on the combination of `first_name` + `last_name` + `tax_id`, or just `tax_id` alone? | Affects database index design |
