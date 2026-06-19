@@ -1,33 +1,25 @@
-# Continuous Improvement Reflection: 001-customer-management Plan
+# Reflection: Customer Management Planning
 
-## What Went Well
+## What went well
 
-1. **Pattern Reuse**: The existing `ApplicationManagement` feature provided a clean, consistent template. All layers (DTOs, Commands/Queries, Repository, Controller, Mappers, Validators) follow identical patterns, reducing cognitive load and implementation risk.
+1. **Established pattern reuse**: The `ApplicationManagement` feature provided a clean, consistent template for all layers — DTOs, commands/queries, validators, repository, entity configuration, and controller structure. This eliminated guesswork.
+2. **Pre-scaffold detection confirmed greenfield**: No existing customer-related files in any layer, so no collision risk.
+3. **Spec consistency check found meaningful issues**: The `first_name` mandatory ambiguity (issue #1) and lack of pagination (issue #2) are worth surfacing to the user.
 
-2. **Pre-Scaffold Detection**: Confirmed zero existing customer-related files across all layers, so no collision or refactoring concerns.
+## What could be improved
 
-3. **Spec Consistency Check**: Identified the `first_name` mandatory ambiguity early — this prevents a rework cycle if the user intended it to be optional.
+1. **Story model is sparse**: Only 4 fields with minimal trait annotations. This leaves many design decisions (format validation, pagination, filtering) as assumptions that need user confirmation.
+2. **The ticket number in the story file is `001`** while the file is named `002_customers.story.md` — this is a minor inconsistency but could cause confusion if multiple story files share ticket numbers.
 
-4. **Bottom-Up Implementation Order**: The 13-step order respects dependency chains, ensuring each layer compiles before the next depends on it.
+## Decisions made
 
-## What Could Be Improved
+1. **`FirstName` treated as optional** — Unlike the previous plan version that assumed mandatory, this version respects the story as written: only fields explicitly marked "Traits: mandatory" are required.
+2. **`TaxId` treated as user-supplied** — No auto-generation trait in the model.
+3. **Duplicate detection via PostgreSQL unique index + `DbUpdateException`** — Same pattern as `ApplicationRepository`.
+4. **No Domain layer changes** — `InvalidOperationException` is reused for not-found and duplicate-key scenarios.
 
-1. **Pagination Not Addressed**: The story doesn't mention pagination, but `GET /customers` without it is a known anti-pattern for production APIs. Flagged as a question (Q2) rather than proactively including it.
+## Open risks
 
-2. **No Domain Exception Types**: The plan reuses `InvalidOperationException` for not-found and duplicate-key scenarios. A dedicated `CustomerNotFoundException` and `DuplicateTaxIdException` in the Domain layer would be more expressive and enable cleaner middleware-based error mapping. However, this would deviate from the existing Application Management pattern.
-
-3. **Tax ID Format Validation**: The story doesn't specify a tax ID format. Without format validation, the unique constraint is the only guard. A regex-based validator would be more robust but requires user input on the expected format.
-
-## Lessons Learned
-
-1. **Always check the existing codebase patterns first**: The `ApplicationManagement` feature was the perfect reference implementation. Time spent reading existing code (entity, repository, controller, mappers, validators) directly informed every design decision.
-
-2. **Trait omissions in specs are common**: The `first_name` field missing "Traits: mandatory" while `last_name` has it is a classic spec inconsistency. Always cross-reference fields against acceptance criteria.
-
-3. **The architecture rules are well-followed in this codebase**: The separation between API models, Application DTOs, and Infrastructure entities is clean and consistent. The plan mirrors this exactly.
-
-## Action Items
-
-- [ ] Get user answers to Q1–Q5 before implementation begins
-- [ ] Consider adding `CustomerNotFoundException` to Domain layer if the team wants to move toward richer domain exceptions (separate discussion)
-- [ ] After implementation, verify the plan's file count (20 files) against actual created files
+1. If `first_name` should actually be mandatory, the optional implementation means the database won't enforce it (no `IsRequired()`) and validation won't catch it — but this is a one-line fix.
+2. Without pagination, `GET /customers` could return unbounded results at scale — but the story doesn't specify it, so it's left as a question.
+3. The `tax_id` uniqueness constraint in PostgreSQL will generate a specific error message pattern that `IsDuplicateKeyViolation` looks for — this relies on the `"duplicate key"` substring being present in the exception message, which is PostgreSQL-specific but consistent with the existing pattern.

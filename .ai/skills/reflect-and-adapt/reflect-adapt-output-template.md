@@ -12,6 +12,9 @@
 ### Violations & Showstoppers
 - [List any process violations or blockers]
 
+### Instructional Contradictions & Documentation Bugs
+- [List conflicting instructions, parameter mismatches, broken file references, ambiguous guidance that forced guessing. For each, trace the deviation back to the specific source (e.g., "File X line Y said A but line Z said B").]
+
 ### Process Friction / Workflow Gaps
 - [List unclear steps, missing docs, cumbersome processes]
 
