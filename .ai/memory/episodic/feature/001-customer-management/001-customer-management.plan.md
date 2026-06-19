@@ -10,7 +10,7 @@
 
 ## Story Summary
 
-As an administrator, I want to be able to manage customers in the system. The system must support full CRUD operations (Create, Read, Update, Delete) plus list-all for Customers. Each Customer has a unique identifier, a mandatory last name, a mandatory and unique tax ID, an optional first name, and optional comments.
+As an administrator, I want to be able to manage customers in the system. The system must support full CRUD operations (Create, Read, Update, Delete) plus list-all for Customers. Each Customer has a unique identifier (Guid), a mandatory last name, a mandatory and unique tax ID, an optional first name, and optional comments.
 
 ---
 
@@ -50,6 +50,7 @@ As an administrator, I want to be able to manage customers in the system. The sy
 | ACs ↔ Model | ✅ Match | All fields in model are used in operations |
 | Auth | ⚠️ Flagged | Story says "as an administrator" but no auth mechanism is specified in ACs. Following existing pattern (no auth middleware on controllers). See **Questions**. |
 | Endpoints | ✅ Match | All 5 endpoints defined in ACs |
+| Model traits | ✅ Match | `last_name` marked mandatory, `tax_id` marked mandatory+unique, `first_name` and `comments` have no mandatory trait → optional |
 
 ---
 
@@ -59,7 +60,7 @@ As an administrator, I want to be able to manage customers in the system. The sy
 
 | Action | File | Notes |
 |--------|------|-------|
-| No changes | — | Existing `DomainException` is sufficient |
+| No changes | — | Existing `DomainException` is sufficient; no new enums, events, or exceptions needed |
 
 ### Application Layer (`Ai.Api.Application`)
 
@@ -67,7 +68,7 @@ As an administrator, I want to be able to manage customers in the system. The sy
 |--------|------|-------|
 | CREATE | `Features/CustomerManagement/DTOs/CustomerDto.cs` | Return DTO with all 5 fields |
 | CREATE | `Features/CustomerManagement/DTOs/CreateCustomerDto.cs` | Input DTO (no Id) |
-| CREATE | `Features/CustomerManagement/Commands/CreateCustomerCommand.cs` | Command + Handler (CQRS) |
+| CREATE | `Features/CustomerManagement/Commands/CreateCustomerCommand.cs` | Command + Handler (CQRS, same file) |
 | CREATE | `Features/CustomerManagement/Commands/UpdateCustomerCommand.cs` | Command + Handler |
 | CREATE | `Features/CustomerManagement/Commands/DeleteCustomerCommand.cs` | Command + Handler |
 | CREATE | `Features/CustomerManagement/Queries/GetCustomerByIdQuery.cs` | Query + Handler |
@@ -115,7 +116,7 @@ public sealed record CustomerDto
     public string? Comments { get; init; }
 }
 
-// CreateCustomerDto — input-only DTO
+// CreateCustomerDto — input-only DTO (no Id)
 public sealed record CreateCustomerDto
 {
     public string? FirstName { get; init; }
@@ -136,7 +137,7 @@ public sealed record CreateCustomerDto
 
 ### Unique Constraint Handling
 
-The `CustomerRepository` must handle `DbUpdateException` for duplicate key violations for **both** `TaxId` uniqueness. Follow the existing `ApplicationRepository` pattern with `IsDuplicateKeyViolation()`.
+The `CustomerRepository` must handle `DbUpdateException` for duplicate key violations on `TaxId` uniqueness. Follow the existing `ApplicationRepository` pattern with `IsDuplicateKeyViolation()`.
 
 ### Validation Rules
 
@@ -154,6 +155,15 @@ In `Ai.Api.Infrastructure/DependencyInjection.cs`:
 ```csharp
 services.AddScoped<ICustomerRepository, CustomerRepository>();
 ```
+
+### Controller Pattern
+
+Follow the existing `ApplicationsController` pattern:
+- Use `IMessageBus` (Wolverine mediator) for command/query dispatch
+- `[ApiConventionMethod]` on Post, Get (by id), Put, Delete
+- `[ProducesResponseType]` for 409 Conflict on Create and Update
+- `CreatedAtAction` for Create, `Ok` for Get/Update, `NoContent` for Delete
+- Route constraint: `{id:guid}` for single-resource endpoints
 
 ---
 
@@ -184,14 +194,16 @@ services.AddScoped<ICustomerRepository, CustomerRepository>();
 |---|------------|---------------|
 | A1 | No authorization/authentication required | Story says "as an administrator" but no auth mechanism is specified in ACs. Existing controllers have no auth attributes. |
 | A2 | Snake_case model fields → PascalCase in C# | Standard C# naming convention. Database column names will follow snake_case per EF Core conventions or explicit config. |
-| A3 | TaxId uniqueness enforced at DB level | Model specifies `unique` trait. Following existing pattern (unique index on `Name` in Application). |
-| A4 | `Guid.CreateVersion7()` for ID generation | Per architecture rules for performance. |
+| A3 | TaxId uniqueness enforced at DB level via unique index | Model specifies `unique` trait. Following existing pattern (unique index on `Name` in Application). |
+| A4 | `Guid.CreateVersion7()` for ID generation | Per architecture rules for performance with sequential GUIDs in databases. |
 | A5 | No domain events or enums needed | Story doesn't mention status, lifecycle, or events. |
 | A6 | Feature DTOs stay in feature-level `DTOs/` folder | Following existing `ApplicationManagement` pattern. No other features share these DTOs yet. |
 | A7 | `ICustomerRepository` follows same contract as `IApplicationRepository` | Consistency across the codebase. |
 | A8 | `InvalidOperationException` used for "not found" and "duplicate" scenarios | Aligns with existing `ApplicationRepository` pattern and `ExceptionHandlingMiddleware`. |
 | A9 | Wolverine mediator used for all command/query dispatch | Per architecture rules and existing controller pattern. |
-| A10 | No `[ApiConventionMethod]` attribute on `GetAll` and `Delete` | Following existing `ApplicationsController` pattern (only Post/Get/Put have the convention attribute). |
+| A10 | No `[ApiConventionMethod]` on `GetAll` | Following existing `ApplicationsController` pattern (only Post/Get(id)/Put/Delete have the convention attribute). |
+| A11 | `FirstName` is optional | Model spec says `first_name: datatype: string(256)` without the "mandatory" trait, unlike `last_name`. |
+| A12 | Entity class uses DataAnnotations for basic constraints + Fluent API configuration class for advanced config | Following existing `Application` entity pattern (`[Key]`, `[MaxLength]` on entity + `IEntityTypeConfiguration<T>` for indexes and `IsRequired`). |
 
 ---
 
@@ -200,5 +212,5 @@ services.AddScoped<ICustomerRepository, CustomerRepository>();
 | # | Question | Context |
 |---|----------|---------|
 | Q1 | Should authorization be implemented? The story says "as an administrator" but no auth is specified in the ACs. | If yes, what auth mechanism (JWT, API key, etc.)? This would add new files across all layers. |
-| Q2 | Should `FirstName` be optional? The model says `first_name: datatype: string(256)` without the "mandatory" trait, unlike `last_name`. | Confirming: first name is optional. |
-| Q3 | Should the `GetAll` (list) endpoint support pagination, sorting, or filtering? | The ACs don't mention it, but listing all customers could become a performance concern. |
+| Q2 | Should the `GetAll` (list) endpoint support pagination, sorting, or filtering? | The ACs don't mention it, but listing all customers could become a performance concern at scale. |
+| Q3 | Should `TaxId` be validated for format (e.g., regex pattern for tax ID format)? | The model only specifies `string(16)` with no format constraint. |
