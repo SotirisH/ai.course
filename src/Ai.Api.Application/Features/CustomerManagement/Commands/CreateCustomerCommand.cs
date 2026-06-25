@@ -1,5 +1,3 @@
-using Ai.Api.Application.Features.CustomerManagement.DTOs;
-using Ai.Api.Application.Interfaces.Repositories;
 using Ai.Api.Application.Mappings;
 
 namespace Ai.Api.Application.Features.CustomerManagement.Commands;

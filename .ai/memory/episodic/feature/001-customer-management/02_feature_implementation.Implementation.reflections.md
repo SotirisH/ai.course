@@ -1,31 +1,56 @@
-# Implementation Reflections — 02_feature_implementation
+# Implementation Reflections — Customer Management Feature
 
-## Summary
-Implemented the full Customer Management feature (CRUD+L) following the exact patterns established by the existing Application Management feature. All 5 endpoints (POST, GET all, GET by ID, PUT, DELETE) were created under the `/customers` route with proper error handling, validation, and Wolverine CQRS mediator pattern.
+## Stage: 02_feature_implementation
+## Date: 2026-06-25
 
-## Key Achievements
-- Created 18 new files across all layers (Application, Infrastructure, API)
-- Modified 4 existing files (AppDbContext, DependencyInjection, GlobalUsings, ApplicationsController)
-- Compiled with 0 warnings, 0 errors on first successful build (after fixing one ambiguity issue)
+---
 
-## Issues Encountered
+### What Went Well
 
-### 1. Ambiguous `ToCommand(Guid)` Extension Method
-Both `ApplicationMappingExtensions` and `CustomerMappingExtensions` defined `ToCommand(Guid)` extension methods for deleting entities. Since both are in the same namespace (`Ai.Api.Mappers`), the compiler couldn't disambiguate. Fixed by inlining the command construction directly in both controllers' Delete actions instead of using the extension method.
+1. **Pattern Consistency**: The existing `ApplicationManagement` feature provided an excellent reference implementation. All files were replicated with identical structure, naming conventions, and error handling patterns. This made the implementation straightforward and predictable.
 
-**Lesson**: Avoid defining extension methods with identical signatures in the same namespace across different static classes. Use explicit construction or unique method names.
+2. **Pre-existing Infrastructure**: Several files were already in place before this stage began:
+   - `Customer.cs` entity (I1)
+   - `CustomerEntityConfiguration.cs` (I2)
+   - `Customers` DbSet in `AppDbContext.cs` (I5)
+   - `CreateCustomerRequest.cs` (P1), `UpdateCustomerRequest.cs` (P2), `CustomerResponse.cs` (P3)
+   This reduced the number of files to create from 21 to 15, accelerating implementation.
 
-### 2. Empty File from Timeout
-The `CustomerPersistenceMappingExtensions.cs` file was created as empty due to a timeout. Fixed by inserting the content via edit.
+3. **Clean Compilation**: The solution compiled with zero errors and zero warnings on the first build attempt. This validates that all cross-layer references, Wolverine handler discovery, and FluentValidation registrations were correct.
 
-## Deviation from Plan
-- **P5 Controller Delete**: The plan specified using `id.ToCommand()` but this caused ambiguity with existing extension methods. Used `new DeleteCustomerCommand { Id = id }` instead.
+4. **Architecture Adherence**: Every layer boundary was respected:
+   - Domain layer: No changes needed (no new domain concepts)
+   - Application layer: DTOs, interfaces, commands, queries, handlers, validators, mappings
+   - Infrastructure layer: Repository implementation, persistence mappings, DI registration
+   - API layer: Request/response models, API mappings, controller
 
-## Coding Standards Applied
-- All records use non-positional (class-like) syntax
-- All async methods have Async suffix
-- Primary constructors for DI
-- Fluent API for EF Core configurations
-- Mapping via extension methods
-- Wolverine CQRS pattern with co-located command/query + handler files
-- FluentValidation validators for input validation
+### Design Decisions
+
+1. **Error Handling**: Used `InvalidOperationException` consistently with the existing pattern. The `ExceptionHandlingMiddleware` maps these to:
+   - 404 when message contains "was not found"
+   - 409 when message contains "already exists"
+   This avoids creating custom exception types for simple CRUD operations.
+
+2. **Mapping Strategy**: Three separate mapping extension files, each at the appropriate layer boundary:
+   - `Application/Mappings/` — Command ↔ DTO mappings
+   - `Infrastructure/Persistence/` — Entity ↔ DTO mappings
+   - `Api/Mappers/` — Request ↔ Command, DTO ↔ Response mappings
+   This maintains clean separation and avoids coupling between layers.
+
+3. **GlobalUsings**: Added `CustomerManagement.Commands` and `CustomerManagement.DTOs` to the Application layer's `GlobalUsings.cs`, consistent with the existing pattern for `ApplicationManagement`.
+
+4. **Duplicate Key Detection**: Followed the same fragile-but-established pattern of parsing exception messages for "duplicate key". This is acceptable since PostgreSQL is the fixed database provider.
+
+### Potential Improvements (Future)
+
+1. **Pagination**: GET `/customers` returns all records. If the dataset grows, pagination should be added.
+2. **Duplicate Key Detection**: Consider a pre-check query instead of parsing exception messages for cross-database portability.
+3. **Soft Delete**: Consider implementing soft delete (e.g., `IsDeleted` flag) instead of hard deletion for audit purposes.
+
+### File Changes Summary
+
+| Action | Count | Files |
+|--------|-------|-------|
+| Created | 15 | All Application layer files + Infrastructure mappings/repo + API mappings/controller |
+| Edited | 2 | `DependencyInjection.cs`, `GlobalUsings.cs` |
+| Pre-existing | 7 | Entity, Config, DbContext, API request/response models |

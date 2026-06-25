@@ -1,6 +1,3 @@
-using Ai.Api.Application.Features.CustomerManagement.Commands;
-using Ai.Api.Application.Features.CustomerManagement.DTOs;
-
 namespace Ai.Api.Application.Mappings;
 
 public static class CustomerMappingExtensions

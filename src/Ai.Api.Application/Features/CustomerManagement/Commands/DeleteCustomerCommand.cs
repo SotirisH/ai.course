@@ -1,6 +1,3 @@
-using Ai.Api.Application.Features.CustomerManagement.DTOs;
-using Ai.Api.Application.Interfaces.Repositories;
-
 namespace Ai.Api.Application.Features.CustomerManagement.Commands;
 
 public sealed record DeleteCustomerCommand
