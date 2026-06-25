@@ -24,6 +24,7 @@ Please include the following files as your global context:
 - [tech-stack.md](.ai/rules/tech-stack.md)
 - [architecture.md](.ai/rules/architecture.md)
 - [testing-strategy.md](.ai/rules/testing-strategy.md)
+- Ensure you have prereload all skills in the folder [skills](.ai/skills)
 **IMPORTANT**: If you fail to load any of the above files then STOP, state which files you failed to load and the reason!
 
 # Implementation Stage
@@ -49,7 +50,6 @@ Please include the following files as your global context:
 - [ ]  All testing standards from `testing-strategy.md` have been applied
 - [ ]  Compliance checklist saved to `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name_kebab}/compliance-checklist.md`
 - [ ]  Reflection document saved to `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name_kebab}/Implementation.reflections.md`
-- [ ]  All changes committed to feature branch `feature/{ticket_num}-{feature_name_kebab}`
 
 ### Reflect & Adapt
 Invoke the **Reflect & Adapt** skill with:
