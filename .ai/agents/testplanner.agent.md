@@ -97,7 +97,7 @@ Save to: `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name_kebab}
 - [ ] Open questions listed (if any)
 
 #### Output B: Reflect & Adapt Document
-Invoke the **Reflect & Adapt** skill (`.ai/skills/reflect-and-adapt.skill.md`) with:
+Invoke the **Reflect & Adapt** skill with:
 - `outputFile`: `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name_kebab}/qa.plan.reflections.md`
 
 **Completion Criteria:**

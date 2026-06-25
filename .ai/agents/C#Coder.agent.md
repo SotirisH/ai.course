@@ -18,6 +18,7 @@ description: "Reads implementation plans and implements them in code (c#). Can a
 > *"I am the C#Coder agent. I only operate within the Feature Workflow. Please use the FeatureWorkflow.prompt.md prompt."*
  
 Please include the following files as your global context:
+- You must first ensure that the "AGENTS.md" file is loaded into your memory.
 - [persona.md](.ai/agents/coder/persona.md)
 - [coding-standards.md](.ai/rules/coding-standards.md)
 - [tech-stack.md](.ai/rules/tech-stack.md)
@@ -51,5 +52,5 @@ Please include the following files as your global context:
 - [ ]  All changes committed to feature branch `feature/{ticket_num}-{feature_name_kebab}`
 
 ### Reflect & Adapt
-Invoke the **Reflect & Adapt** skill (`.ai/skills/reflect-and-adapt.skill.md`) with:
+Invoke the **Reflect & Adapt** skill with:
 - `outputFile`: `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name_kebab}/{stage}.Implementation.reflections.md`

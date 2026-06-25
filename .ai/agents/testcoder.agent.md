@@ -60,7 +60,7 @@ IMPORTANT: If you fail to load any of the above files then STOP, state which fil
 - Save to: `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name_kebab}/qa-compliance-checklist.md`
 
 ### Reflect & Adapt
-Invoke the **Reflect & Adapt** skill (`.ai/skills/reflect-and-adapt.skill.md`) with:
+Invoke the **Reflect & Adapt** skill  with:
 - `outputFile`: `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name_kebab}/qa.code.reflections.md`
 
 **Completion Criteria:**

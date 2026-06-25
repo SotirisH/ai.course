@@ -14,15 +14,3 @@
   resolve it to `{workspace_root}/.ai/memory/foo.md`.
 - When an agent receives a relative path like `.ai/agents/planner/persona.md`, resolve it against `{workspace_root}`.
 - When an agent receives a parameter like `workItemFile:{path}`, if the path is relative, resolve it against `{workspace_root}` before using it.
-
-# Available Agents
-
-The following agents are available for use in the Feature Workflow (`FeatureWorkflow.prompt.md`).
-Each agent has a dedicated role, persona, and LLM model. They must be invoked via `run_subagent`.
-
-| Agent Name   | File                                  | Model                      | Role                                                                 |
-|--------------|---------------------------------------|----------------------------|----------------------------------------------------------------------|
-| `planner`    | `.ai/agents/planner.agent.md`         | `deepseek/deepseek-v4-pro`   | Stage 1 — Feature Plan: analyzes work items, produces implementation plan |
-| `C#Coder`    | `.ai/agents/C#Coder.agent.md`         | `deepseek/deepseek-v4-flash` | Stage 2 — Feature Implementation: implements the feature in C# code  |
-| `TestPlanner`| `.ai/agents/testplanner.agent.md`     | `deepseek/deepseek-v4-pro`   | Stage 3 — Test Planning: produces test strategy, Gherkin scenarios, and test file map |
-| `TestCoder`  | `.ai/agents/testcoder.agent.md`       | `deepseek/deepseek-v4-flash` | Stage 4 — Test Implementation: implements all test scenarios as C# test code |

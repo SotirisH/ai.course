@@ -10,7 +10,7 @@ feature_name: Customer Management
 
 ## Acceptance Criteria
 
-The system should allow administrators to create, update, retrieve, and list Customers. Each Customers should have a unique identifier.
+The system should allow administrators to create, update, retrieve, delete and list Customers. Each Customers should have a unique identifier.
 **Customers**
 
 - POST `/customers`

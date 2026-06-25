@@ -1,33 +1,35 @@
 ---
 name: "Planner"
 description: "Analyzes work items and creates detailed implementation plans. Does NOT write code or modifies any source code files."
+skills:
+    - reflect-and-adapt
 ---
 # Parameters
-
 - name: {work_item_file}
   description: "The path to the work item file that has the details about the feature we want to implement"
   required: true
 
-**Scope**: This agent is ONLY for use within the `FeatureWorkflow.prompt.md` workflow.
-
-> It must be invoked via `run_subagent` with `agentName: "planner"`.
-> If invoked directly by a user asking a general planning question, respond:
-> *"I am the Planner agent. I only operate within the Feature Workflow. Please use the FeatureWorkflow.prompt.md prompt."*
+# **Scope**
+This agent is ONLY for use within the `FeatureWorkflow.prompt.md` workflow.
+If invoked directly by a user asking a general planning question, respond:
+*"I am the Planner agent. I only operate within the Feature Workflow. Please use the FeatureWorkflow.prompt.md prompt."* 
+and ⛔ stop the execution.
 
 # Context
-
 Please include the following files as your global context:
+- You must first ensure that the "AGENTS.md" file is loaded into your memory.
 - [persona.md](.ai/agents/planner/persona.md)
 - [architecture.md](.ai/rules/architecture.md)
 - [tech-stack.md](.ai/rules/tech-stack.md)
 - [coding-standards.md](.ai/rules/coding-standards.md)
+- load skill [SKILL.md](.ai//skills/reflect-and-adapt/SKILL.md)
   IMPORTANT: If you fail to load any of the above files then STOP, state which files you failed to load and the reason!
 
 # Planning Stage
 On this stage you read and analyze the {work_item_file}. Do not write any code yet. Instead, break down the work item into clear, actionable steps.
 Create a detailed implementation plan that outlines how you will approach the task,
 what components you will need to create or modify, and how you will ensure that the solution meets the requirements.
-
+You MUST follow the steps below with the exact order!
 ## Steps
 
 1. From the "Metadata" section of `{work_item_file}` extract the values of
@@ -36,17 +38,16 @@ what components you will need to create or modify, and how you will ensure that 
    - `{feature_name}`
    - `{work_item_type}`
 2. **Check for existing plan file**:
-
    - (a) Check if directory `.ai/memory/episodic/{work_item_type}/` exists. If it doesn't exist → proceed to Step 3.
    - (b) If directory exists, search for files matching `{ticket_num}*.plan.md` pattern in `.ai/memory/episodic/{work_item_type}/`.
    - (c) If a matching plan file is found:
-     - Ask the user if they want to
+     - Ask the user what to do. The user must provide an answer. If not then STOP. 
+     - Available options are:
        1. **Keep existing plan**
-       2. **Update with new insights**
-       3. **Overwrite completely**
+       2. **Overwrite completely**
      - If "Keep existing plan": Skip remaining PLAN steps and output the existing plan as the response.
-     - If "Update" or "Overwrite": **Clean the target directory first** by running `Remove-Item -Path ".ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name_kebab}/*" -Force` via terminal. This prevents stale artifacts and avoids `create_file` overwrite conflicts. Then proceed to step 3.
-   - (d) If no matching plan file exists → proceed to Step 3.
+     - If "Overwrite": **Clean the target directory first** by running `Remove-Item -Path ".ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name_kebab}/*" -Force` via terminal. This prevents stale artifacts and avoids `create_file` overwrite conflicts. Then proceed to step 3.
+    
 3. Read the "Story" & acceptance criteria from `{work_item_file}`. For `Spec Consistency Check` compare:
    - the story text
    - acceptance criteria
@@ -67,10 +68,6 @@ what components you will need to create or modify, and how you will ensure that 
    - *Error handling*: If the scan fails (e.g., directory doesn't exist yet), treat that as "no files found" and proceed.
 
 ## Output
-
-Two files will be generated as output of this stage. Output is split into two phases to avoid tool conflicts:
-
-# Note: Phase A must complete before Phase B to prevent create_file conflicts with run_in_terminal
 
 ### Phase A: Shell Setup (Terminal Operations)
 
@@ -116,41 +113,35 @@ Two files will be generated as output of this stage. Output is split into two ph
 ### Phase B: Content Generation (File Creation)
 
 **Only after Phase A completes.** Use `create_file` for each document:
-
 - Plan document → `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name_kebab}/{ticket_num}-{feature_name_kebab}.plan.md`
-- Reflections document → `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name_kebab}/plan.reflections.md`
 
 #### **Output A**: Plan Document
 
 - Format: `{work_item_type}/{ticket_num}-{feature_name_kebab}.plan.md`
   - `{feature_name}` is the value extracted from the work item's `## Metadata` section in Step 1. It must already be present there. If it is missing, STOP and ask the user to add it to the work item file before proceeding.
-- The plan document MUST begin with a `## Metadata` section containing:
-  - **Ticket**: `{ticket_num}`
-  - **Feature Name**: `{feature_name}`
-  - **Work Item Type**: `{work_item_type}`
-- Generate the following additional sections:
-  - Story summary
-  - Acceptance criteria (Given-When-Then)
-  - File change list
-  - Implementation details
-  - Implementation order
-  - All the assumptions made during planning. For each assumption, include a justification on the logic you used to make this assumption.
-  - All the questions that need to be answered before implementation if there is any ambiguity in the work item
+
+- **Use the template at [plan-template.md](.ai/agents/planner/plan-template.md)** as the structure for the plan document. Populate all sections as follows:
+  1. **Metadata** — Fill with values from Step 1: `{ticket_num}`, `{feature_name}`, `{work_item_type}`.
+  2. **Story Summary** — A concise paragraph summarizing the work item story.
+  3. **Acceptance Criteria (Given-When-Then)** — Extract each acceptance criterion from the work item and format as Given-When-Then with an `AC{N}` ID and title. Include `And` clauses where present.
+  4. **Spec Consistency Check** — Present the cross-check results from Step 3 as a table. Include a summary line stating whether issues were found or if the work item is internally consistent.
+  5. **File Change List** — Break down by layer (Domain, Application, Infrastructure, API/Presentation). Each row includes an action (`CREATE`, `EDIT`, `No changes needed`), file path, and notes. Pre-scaffold detection results from Step 5 must be reflected: mark existing files as `🟡 Already exists — review before use`.
+  6. **Implementation Details** — Expand on key design decisions: model mapping (fields → C# properties → DB columns), API endpoints table, validation rules, error handling strategy, repository pattern, and database schema (include the expected migration SQL). Add any other subsections relevant to the feature.
+  7. **Implementation Order** — Numbered, ordered list of steps. Each step references the file change IDs (e.g., `A2, A3`), includes a short title, and a one-line description of what to do.
+  8. **Assumptions** — Table with columns `#`, `Assumption`, `Justification`, `User Decision`. For each assumption, include a justification on the logic used to make it. The `User Decision` column must be left **empty** — it will be filled during the QA session.
+  9. **Questions for Clarification** — Table with columns `#`, `Question`, `Impact`, `User Decision`. Include any question where the work item is ambiguous or requires a decision. The `User Decision` column must be left **empty** — it will be filled during the QA session.
+  10. **Risks** — Table with columns `Risk`, `Mitigation`. Identify any potential issues (e.g., fragile exception handling patterns, missing abstractions) and how the plan mitigates them.
+
+
+#### **Output B**: Continuous Improvement
+
+Execute the **Reflect & Adapt** skill to generate a post-planning reflection:
+- `$outputFile`: `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name_kebab}/01_feature_plan.reflections.md`
 
 **Completion Criteria:**
-
 - [ ]  Existing plan check completed
 - [ ]  Pre-scaffold detection completed — existing files flagged in file change list
 - [ ]  Feature branch `feature/{ticket_num}-{feature_name_kebab}` created or checked out
 - [ ]  Plan saved to `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name_kebab}/{ticket_num}-{feature_name_kebab}.plan.md`
 - [ ]  Plan committed to feature branch `feature/{ticket_num}-{feature_name_kebab}`
-
-#### **Output B**: Reflect & Adapt Document
-
-Invoke the **Reflect & Adapt** skill (`.ai/skills/reflect-and-adapt.skill.md`) with:
-- `outputFile`: `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name_kebab}/01_feature_plan.reflections.md`
-
-**Completion Criteria:**
-- [ ]  Reflection document saved to `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name_kebab}/` directory
-- [ ]  Reflection committed to feature branch `feature/{ticket_num}-{feature_name_kebab}`
-- [ ]  Workflow/process improvements implemented and committed (if applicable)
+- [ ]  Reflection documant created in `.ai/memory/episodic/{work_item_type}/{ticket_num}-{feature_name_kebab}/01_feature_plan.reflections.md`

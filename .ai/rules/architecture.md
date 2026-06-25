@@ -27,7 +27,7 @@ It serves as a guide for structuring projects to enhance scalability and adaptab
 ### Testing Structure
 
 Tests are organized in a separate `tests/` folder at the solution level, with clear separation by test type.
-See `.ai/rules/testing-strategy.md` for the canonical testing reference, including test layer definitions, folder structure, tools, and naming conventions.
+See [testing-strategy.md](testing-strategy.md) for the canonical testing reference, including test layer definitions, folder structure, tools, and naming conventions.
 
 **Testing Tools:**
 
@@ -119,6 +119,7 @@ Application/
 - Implements repository interfaces and external service integrations
 - No business logic - only technical implementation details
 - Receives DTOs from and returns DTOs to the Application layer. Internally maps between persistence entities and DTOs.
+- Uses `Fluent API configuration` instead of DataAnnotations for the EF Core entity models
 
 **Standard Folder Structure:**
 
@@ -142,7 +143,7 @@ Infrastructure/
 
 - Repository classes: Entity name + "Repository" (e.g., `ProductRepository`)
 - DbContext: Solution-specific name + "DbContext" (e.g., `RefactorDbContext`)
-- Entity classes: Entity name + "Entity" (e.g., `Orders`, `Products`) . It should match the name of the database table.
+- Entity classes: Entity name (e.g., `Orders`, `Products`) . It should match the name of the database table.
 - Service implementations: Interface name without "I" prefix (e.g., `EmailService` for `IEmailService`)
 - Configuration classes: Descriptive names ending with "Options" or "Settings" (e.g., `SmtpSettings`)
 
