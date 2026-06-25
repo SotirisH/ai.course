@@ -1,0 +1,9 @@
+namespace Ai.Api.Models.Requests;
+
+public sealed record CreateCustomerRequest
+{
+    public string? FirstName { get; init; }
+    public string LastName { get; init; } = string.Empty;
+    public string TaxId { get; init; } = string.Empty;
+    public string? Comments { get; init; }
+}

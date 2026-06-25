@@ -8,6 +8,8 @@ public class AppDbContext : DbContext
 
     public DbSet<Entities.Application> Applications => Set<Entities.Application>();
 
+    public DbSet<Entities.Customer> Customers => Set<Entities.Customer>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(AppDbContext).Assembly);

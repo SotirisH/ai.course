@@ -75,9 +75,7 @@ public class ApplicationsController(IMessageBus messageBus) : ControllerBase
     [ApiConventionMethod(typeof(DefaultApiConventions), nameof(DefaultApiConventions.Delete))]
     public async Task<ActionResult> Delete([FromRoute] Guid id, CancellationToken cancellationToken)
     {
-        DeleteApplicationCommand command = id.ToCommand();
-
-        await messageBus.InvokeAsync(command, cancellationToken);
+        await messageBus.InvokeAsync(new DeleteApplicationCommand { Id = id }, cancellationToken);
 
         return NoContent();
     }
