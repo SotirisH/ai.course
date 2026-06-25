@@ -10,49 +10,40 @@
 
 ## Story Summary
 
-As an administrator, I want to be able to manage customers in the system. The system should allow administrators to create, update, retrieve, delete, and list Customers. Each Customer must have a unique identifier and a unique `tax_id`.
+As an administrator, I want to be able to manage customers in the system. This feature implements full CRUD operations (Create, Read, Update, Delete) plus a list-all operation for customers. Each customer has a unique identifier, first name, last name (mandatory), a tax ID (mandatory, unique), and optional comments. The API exposes five endpoints under the `/customers` route.
 
 ---
 
 ## Acceptance Criteria (Given-When-Then)
 
 ### AC1 — Create Customer
-- **Given** an administrator provides valid customer data (first_name, last_name, tax_id, optional comments)
-- **When** a `POST /customers` request is made
-- **Then** a new Customer is created, persisted to the database, and the response returns `201 Created` with the full Customer resource including a newly generated GUID `id`
+- **Given** an administrator wants to add a new customer
+- **When** they submit a POST request to `/customers` with valid first_name, last_name, tax_id, and optional comments
+- **Then** the customer is created, persisted, and a 201 response with the created resource is returned
+- **And** the response includes a unique GUID identifier
 
 ### AC2 — Update Customer
-- **Given** a Customer exists with a specific `id`
-- **When** a `PUT /customers/{id}` request is made with updated data
-- **Then** the Customer is updated, persisted, and the response returns `200 OK` with the updated Customer resource
-- **And** if the Customer does not exist, the response returns `404 Not Found`
+- **Given** an existing customer record
+- **When** an administrator submits a PUT request to `/customers/{id}` with updated fields
+- **Then** the customer record is updated and a 200 response with the updated resource is returned
+- **And** if the customer does not exist, a 404 response is returned
 
-### AC3 — Get Customer by ID
-- **Given** a Customer exists with a specific `id`
-- **When** a `GET /customers/{id}` request is made
-- **Then** the response returns `200 OK` with the Customer resource
-- **And** if the Customer does not exist, the response returns `404 Not Found`
+### AC3 — Retrieve Customer by ID
+- **Given** an existing customer record
+- **When** an administrator submits a GET request to `/customers/{id}`
+- **Then** the customer details are returned with a 200 response
+- **And** if the customer does not exist, a 404 response is returned
 
 ### AC4 — List All Customers
-- **Given** one or more Customers exist
-- **When** a `GET /customers` request is made
-- **Then** the response returns `200 OK` with a list of all Customer resources
+- **Given** one or more customer records exist in the system
+- **When** an administrator submits a GET request to `/customers`
+- **Then** a list of all customers is returned with a 200 response
 
 ### AC5 — Delete Customer
-- **Given** a Customer exists with a specific `id`
-- **When** a `DELETE /customers/{id}` request is made
-- **Then** the Customer is removed from the database and the response returns `204 No Content`
-- **And** if the Customer does not exist, the response returns `404 Not Found`
-
-### AC6 — Uniqueness Constraint (tax_id)
-- **Given** a Customer already exists with a specific `tax_id`
-- **When** an attempt is made to create or update another Customer with the same `tax_id`
-- **Then** the response returns `409 Conflict`
-
-### AC7 — Validation
-- **Given** required fields are missing or exceed length limits
-- **When** a `POST` or `PUT` request is made
-- **Then** the response returns `400 Bad Request` with details about the validation errors
+- **Given** an existing customer record
+- **When** an administrator submits a DELETE request to `/customers/{id}`
+- **Then** the customer is removed from the system and a 204 No Content response is returned
+- **And** if the customer does not exist, a 404 response is returned
 
 ---
 
@@ -60,121 +51,125 @@ As an administrator, I want to be able to manage customers in the system. The sy
 
 | Check | Status | Detail |
 |-------|--------|--------|
-| `tax_id` mandatory + unique | ✅ Story + model agree | Model specifies `mandatory` and `unique` |
-| `last_name` mandatory | ✅ Story + model agree | Model specifies `mandatory` |
-| Endpoints match model | ✅ | All 5 REST endpoints listed with matching model fields |
-| `id` as GUID | ✅ | Model specifies `guid` |
-| String length limits | ✅ | `first_name`: 256, `last_name`: 256, `tax_id`: 16, `comments`: 1024 |
+| Model fields vs AC endpoints alignment | ✅ Pass | All 5 endpoints listed in AC cover the full CRUD+L for the `customers` model |
+| Model field completeness | ✅ Pass | All fields (id, first_name, last_name, tax_id, comments) defined with types and constraints |
+| `tax_id` uniqueness constraint present | ✅ Pass | `unique` trait specified in model definition |
+| `last_name` mandatory constraint present | ✅ Pass | `mandatory` trait specified in model definition |
+| `tax_id` mandatory constraint present | ✅ Pass | `mandatory` trait specified in model definition |
+| Endpoint paths consistent | ✅ Pass | All endpoints use `/customers` base path consistently |
+| Data types consistent with .NET | ✅ Pass | guid → `Guid`, string(256) → `MaxLength(256)`, string(16) → `MaxLength(16)`, string(1024) → `MaxLength(1024)` |
 
-**No spec issues detected.** The work item is internally consistent.
+**Summary: The work item is internally consistent. No contradictions found between the story, acceptance criteria, and model definition.**
 
 ---
 
 ## File Change List
 
-### Domain Layer (`src/Ai.Api.Domain/`)
-| Action | File | Notes |
-|--------|------|-------|
-| No changes needed | N/A | Domain layer only contains exceptions/enums. Existing `DomainException` is sufficient. |
-
-### Application Layer (`src/Ai.Api.Application/`)
+### Domain Layer
 | # | Action | File | Notes |
 |---|--------|------|-------|
-| A1 | CREATE | `Interfaces/Repositories/ICustomerRepository.cs` | Defines `GetByIdAsync`, `GetAllAsync`, `AddAsync`, `UpdateAsync`, `DeleteAsync` — accepts/returns Customer DTOs |
-| A2 | CREATE | `Features/CustomerManagement/DTOs/CustomerDto.cs` | `record` with Id, FirstName, LastName, TaxId, Comments |
-| A3 | CREATE | `Features/CustomerManagement/DTOs/CreateCustomerDto.cs` | `record` with FirstName, LastName, TaxId, Comments (no Id) |
-| A4 | CREATE | `Features/CustomerManagement/Commands/CreateCustomerCommand.cs` | `record` + `CreateCustomerCommandHandler` in same file (Wolverine convention) |
-| A5 | CREATE | `Features/CustomerManagement/Commands/UpdateCustomerCommand.cs` | `record` + `UpdateCustomerCommandHandler` in same file |
-| A6 | CREATE | `Features/CustomerManagement/Commands/DeleteCustomerCommand.cs` | `record` + `DeleteCustomerCommandHandler` in same file |
-| A7 | CREATE | `Features/CustomerManagement/Queries/GetCustomerByIdQuery.cs` | `record` + `GetCustomerByIdQueryHandler` in same file |
-| A8 | CREATE | `Features/CustomerManagement/Queries/GetCustomersQuery.cs` | `record` + `GetCustomersQueryHandler` in same file (list all) |
-| A9 | CREATE | `Validators/CreateCustomerCommandValidator.cs` | FluentValidation — last_name required, tax_id required + max 16, first_name max 256, comments max 1024 |
-| A10 | CREATE | `Validators/UpdateCustomerCommandValidator.cs` | FluentValidation — same rules + id not empty |
-| A11 | CREATE | `Mappings/CustomerMappingExtensions.cs` | Extension methods: `CreateCustomerCommand → CreateCustomerDto`, `UpdateCustomerCommand → CustomerDto` (apply to existing) |
+| D1 | No changes needed | `src/Ai.Api.Domain/` | No domain-specific exceptions or enums required beyond existing `DomainException`. Existing `ExceptionHandlingMiddleware` handles `InvalidOperationException` → 404/409. |
 
-### Infrastructure Layer (`src/Ai.Api.Infrastructure/`)
+### Application Layer
 | # | Action | File | Notes |
 |---|--------|------|-------|
-| I1 | CREATE | `Persistence/Entities/Customer.cs` | EF Core entity: `Id`, `FirstName`, `LastName`, `TaxId`, `Comments` |
-| I2 | CREATE | `Persistence/Configurations/CustomerEntityConfiguration.cs` | Fluent API: table "Customers", PK on Id, unique index on TaxId, required/maxlength constraints |
-| I3 | CREATE | `Persistence/Repositories/CustomerRepository.cs` | Implements `ICustomerRepository`. Maps between `Customer` entity and DTOs. Handles duplicate key detection for TaxId. |
-| I4 | CREATE | `Persistence/CustomerPersistenceMappingExtensions.cs` | Extension methods: `Customer → CustomerDto`, `CreateCustomerDto → Customer`, `CustomerDto.ApplyTo(Customer)` |
-| I5 | EDIT | `Persistence/Context/AppDbContext.cs` | Add `DbSet<Customer> Customers` property |
-| I6 | EDIT | `DependencyInjection.cs` | Register `ICustomerRepository → CustomerRepository` as Scoped |
+| A1 | CREATE | `src/Ai.Api.Application/Features/CustomerManagement/DTOs/CustomerDto.cs` | Output DTO: Id, FirstName, LastName, TaxId, Comments |
+| A2 | CREATE | `src/Ai.Api.Application/Features/CustomerManagement/DTOs/CreateCustomerDto.cs` | Input DTO for repository: FirstName, LastName, TaxId, Comments |
+| A3 | CREATE | `src/Ai.Api.Application/Features/CustomerManagement/Commands/CreateCustomerCommand.cs` | Command + Handler in same file. Handler calls `ICustomerRepository.AddAsync()` |
+| A4 | CREATE | `src/Ai.Api.Application/Features/CustomerManagement/Commands/UpdateCustomerCommand.cs` | Command + Handler in same file. Handler checks existence, applies update, calls `ICustomerRepository.UpdateAsync()` |
+| A5 | CREATE | `src/Ai.Api.Application/Features/CustomerManagement/Commands/DeleteCustomerCommand.cs` | Command + Handler in same file. Handler checks existence, calls `ICustomerRepository.DeleteAsync()` |
+| A6 | CREATE | `src/Ai.Api.Application/Features/CustomerManagement/Queries/GetCustomerByIdQuery.cs` | Query + Handler in same file. Returns `CustomerDto` or throws |
+| A7 | CREATE | `src/Ai.Api.Application/Features/CustomerManagement/Queries/GetCustomersQuery.cs` | Query + Handler in same file. Returns `IReadOnlyList<CustomerDto>` |
+| A8 | CREATE | `src/Ai.Api.Application/Interfaces/Repositories/ICustomerRepository.cs` | Interface: GetByIdAsync, GetAllAsync, AddAsync, UpdateAsync, DeleteAsync |
+| A9 | CREATE | `src/Ai.Api.Application/Mappings/CustomerMappingExtensions.cs` | `CreateCustomerCommand → CreateCustomerDto`, `UpdateCustomerCommand → CustomerDto` (apply) |
+| A10 | CREATE | `src/Ai.Api.Application/Validators/CreateCustomerCommandValidator.cs` | Validate FirstName, LastName, TaxId required + max lengths |
+| A11 | CREATE | `src/Ai.Api.Application/Validators/UpdateCustomerCommandValidator.cs` | Validate Id + same field rules as create |
 
-### API / Presentation Layer (`src/Ai.Api/`)
+### Infrastructure Layer
 | # | Action | File | Notes |
 |---|--------|------|-------|
-| P1 | CREATE | `Models/Requests/CreateCustomerRequest.cs` | `record` with FirstName, LastName, TaxId, Comments |
-| P2 | CREATE | `Models/Requests/UpdateCustomerRequest.cs` | `record` with FirstName, LastName, TaxId, Comments (id from route) |
-| P3 | CREATE | `Models/Responses/CustomerResponse.cs` | `record` with Id, FirstName, LastName, TaxId, Comments |
-| P4 | CREATE | `Mappers/CustomerMappingExtensions.cs` | Extension methods: request→command, command←id (delete), dto→response |
-| P5 | CREATE | `Controllers/CustomersController.cs` | Full CRUD controller: POST, PUT, GET{id}, GET, DELETE. Uses Wolverine `IMessageBus`. Follows `ApplicationsController` pattern. |
+| I1 | CREATE | `src/Ai.Api.Infrastructure/Persistence/Entities/Customer.cs` | DB entity: Id, FirstName, LastName, TaxId, Comments. Table name: `Customers` |
+| I2 | CREATE | `src/Ai.Api.Infrastructure/Persistence/Configurations/CustomerEntityConfiguration.cs` | Fluent API: PK on Id, unique index on TaxId, IsRequired on LastName and TaxId, MaxLength constraints |
+| I3 | CREATE | `src/Ai.Api.Infrastructure/Persistence/CustomerPersistenceMappingExtensions.cs` | `CustomerDto ← Customer`, `CreateCustomerDto → Customer`, `CustomerDto → Customer` (apply) |
+| I4 | CREATE | `src/Ai.Api.Infrastructure/Persistence/Repositories/CustomerRepository.cs` | Full CRUD implementation following `ApplicationRepository` pattern with duplicate key detection |
+| I5 | EDIT | `src/Ai.Api.Infrastructure/Persistence/Context/AppDbContext.cs` | Add `DbSet<Customer> Customers` |
+| I6 | EDIT | `src/Ai.Api.Infrastructure/DependencyInjection.cs` | Register `ICustomerRepository → CustomerRepository` |
+
+### API / Presentation Layer
+| # | Action | File | Notes |
+|---|--------|------|-------|
+| P1 | CREATE | `src/Ai.Api/Models/Requests/CreateCustomerRequest.cs` | FirstName, LastName, TaxId, Comments |
+| P2 | CREATE | `src/Ai.Api/Models/Requests/UpdateCustomerRequest.cs` | FirstName, LastName, TaxId, Comments |
+| P3 | CREATE | `src/Ai.Api/Models/Responses/CustomerResponse.cs` | Id, FirstName, LastName, TaxId, Comments |
+| P4 | CREATE | `src/Ai.Api/Mappers/CustomerMappingExtensions.cs` | Request→Command, Dto→Response mappings |
+| P5 | CREATE | `src/Ai.Api/Controllers/CustomersController.cs` | Full CRUD controller using `IMessageBus` mediator pattern |
 
 ---
 
 ## Implementation Details
 
-### 1. Customer Model Mapping
+### 1. Model Mapping (Fields → C# Properties → DB Columns)
 
-| Work Item Field | C# Property | DB Column | Type | Constraints |
-|-----------------|-------------|-----------|------|-------------|
-| `id` | `Id` | `Id` | `Guid` | PK, generated with `Guid.CreateVersion7()` |
-| `first_name` | `FirstName` | `first_name` | `string(256)` | optional |
-| `last_name` | `LastName` | `last_name` | `string(256)` | mandatory (`.IsRequired()`) |
-| `tax_id` | `TaxId` | `tax_id` | `string(16)` | mandatory (`.IsRequired()`), unique index |
-| `comments` | `Comments` | `comments` | `string(1024)` | optional |
+| Story Field | C# Property | DB Column | Type | Constraints |
+|-------------|-------------|-----------|------|-------------|
+| id | Id | id | `Guid` (PK) | `Guid.CreateVersion7()` |
+| first_name | FirstName | first_name | `string(256)` | Nullable |
+| last_name | LastName | last_name | `string(256)` | **Mandatory** (`IsRequired`) |
+| tax_id | TaxId | tax_id | `string(16)` | **Mandatory**, **Unique Index** |
+| comments | Comments | comments | `string(1024)` | Nullable |
+
+**Naming convention**: C# uses PascalCase, DB uses snake_case (via EF Core Fluent API configuration). The EF Core entity configuration will map property names to snake_case column names.
 
 ### 2. API Endpoints
 
-| Method | Route | Handler | Request | Response |
-|--------|-------|---------|---------|----------|
-| `POST` | `/customers` | `CreateCustomerCommand` | `CreateCustomerRequest` (body) | `201 Created` + `CustomerResponse` |
-| `PUT` | `/customers/{id:guid}` | `UpdateCustomerCommand` | `UpdateCustomerRequest` (body) + id (route) | `200 OK` + `CustomerResponse` |
-| `GET` | `/customers/{id:guid}` | `GetCustomerByIdQuery` | id (route) | `200 OK` + `CustomerResponse` |
-| `GET` | `/customers` | `GetCustomersQuery` | — | `200 OK` + `IReadOnlyList<CustomerResponse>` |
-| `DELETE` | `/customers/{id:guid}` | `DeleteCustomerCommand` | id (route) | `204 No Content` |
+| Method | Route | Command/Query | Response | Status Codes |
+|--------|-------|---------------|----------|--------------|
+| POST | `/customers` | `CreateCustomerCommand` | `CustomerResponse` | 201 (Created), 409 (Conflict - duplicate tax_id) |
+| PUT | `/customers/{id:guid}` | `UpdateCustomerCommand` | `CustomerResponse` | 200 (OK), 404 (Not Found), 409 (Conflict) |
+| GET | `/customers/{id:guid}` | `GetCustomerByIdQuery` | `CustomerResponse` | 200 (OK), 404 (Not Found) |
+| GET | `/customers` | `GetCustomersQuery` | `List<CustomerResponse>` | 200 (OK) |
+| DELETE | `/customers/{id:guid}` | `DeleteCustomerCommand` | — | 204 (NoContent), 404 (Not Found) |
 
-### 3. Validation Rules (FluentValidation)
+### 3. Validation Rules
 
-| Field | Create | Update | Rule |
-|-------|--------|--------|------|
-| `Id` | N/A | Required | `NotEmpty()` |
-| `LastName` | Required | Required | `NotEmpty()`, `MaximumLength(256)` |
-| `TaxId` | Required | Required | `NotEmpty()`, `MaximumLength(16)` |
-| `FirstName` | Optional | Optional | `MaximumLength(256)` |
-| `Comments` | Optional | Optional | `MaximumLength(1024)` |
+| Field | Rule | Validator |
+|-------|------|-----------|
+| FirstName | MaxLength(256) | `CreateCustomerCommandValidator`, `UpdateCustomerCommandValidator` |
+| LastName | NotEmpty, MaxLength(256) | `CreateCustomerCommandValidator`, `UpdateCustomerCommandValidator` |
+| TaxId | NotEmpty, MaxLength(16) | `CreateCustomerCommandValidator`, `UpdateCustomerCommandValidator` |
+| Comments | MaxLength(1024) | `CreateCustomerCommandValidator`, `UpdateCustomerCommandValidator` |
+| Id | NotEmpty | `UpdateCustomerCommandValidator` only |
 
-### 4. Error Handling
+### 4. Error Handling Strategy
 
-All exceptions are caught by the existing `ExceptionHandlingMiddleware`:
-- `ValidationException` → `400 Bad Request`
-- `InvalidOperationException` with "was not found" → `404 Not Found`
-- `InvalidOperationException` with "already exists" → `409 Conflict`
-- Unhandled → `500 Internal Server Error`
-
-The repository will throw `InvalidOperationException` for not-found and duplicate-tax-id scenarios, which the existing middleware already handles via pattern matching.
+Following the established pattern from `ApplicationManagement`:
+- **404 Not Found**: Throw `InvalidOperationException` with message `"Customer with ID '{id}' was not found."` — caught by `ExceptionHandlingMiddleware` and mapped to 404.
+- **409 Conflict**: Throw `InvalidOperationException` with message `"A customer with the tax ID '{taxId}' already exists."` — caught by `ExceptionHandlingMiddleware` and mapped to 409.
+- The repository catches `DbUpdateException` and checks for `"duplicate key"` in the inner exception message to detect unique constraint violations on `tax_id`.
 
 ### 5. Repository Pattern
 
-Follow the existing `ApplicationRepository` pattern exactly:
-- `GetByIdAsync` — uses `AsNoTracking()`, maps entity → DTO
-- `GetAllAsync` — uses `AsNoTracking()`, maps list
-- `AddAsync` — maps DTO → entity, saves, catches `DbUpdateException` for duplicate key
-- `UpdateAsync` — loads entity tracking, applies DTO fields, saves, catches duplicate key
-- `DeleteAsync` — loads entity, removes, saves
+`ICustomerRepository` (Application layer) follows the exact same signature pattern as `IApplicationRepository`:
+- `GetByIdAsync(Guid id, CancellationToken ct)` → `CustomerDto?`
+- `GetAllAsync(CancellationToken ct)` → `IReadOnlyList<CustomerDto>`
+- `AddAsync(CreateCustomerDto dto, CancellationToken ct)` → `CustomerDto`
+- `UpdateAsync(CustomerDto dto, CancellationToken ct)` → `CustomerDto`
+- `DeleteAsync(Guid id, CancellationToken ct)` → `void`
 
-### 6. Database Schema (EF Core Migration)
+`CustomerRepository` (Infrastructure layer) implements the interface using `AppDbContext`, maps between persistence entities and DTOs internally, and never exposes entity types.
 
-Running the migration will produce a `Customers` table:
+### 6. Database Schema (Expected Migration SQL)
+
 ```sql
 CREATE TABLE "Customers" (
-    "Id" uuid NOT NULL PRIMARY KEY,
-    "first_name" character varying(256),
-    "last_name" character varying(256) NOT NULL,
-    "tax_id" character varying(16) NOT NULL,
-    "comments" character varying(1024)
+    "id" uuid NOT NULL,
+    "first_name" varchar(256),
+    "last_name" varchar(256) NOT NULL,
+    "tax_id" varchar(16) NOT NULL,
+    "comments" varchar(1024),
+    CONSTRAINT "PK_Customers" PRIMARY KEY ("id")
 );
+
 CREATE UNIQUE INDEX "IX_Customers_tax_id" ON "Customers" ("tax_id");
 ```
 
@@ -182,48 +177,45 @@ CREATE UNIQUE INDEX "IX_Customers_tax_id" ON "Customers" ("tax_id");
 
 ## Implementation Order
 
-1. **DTOs** (A2, A3) — data contracts first
-2. **Repository interface** (A1) — defines what persistence must provide
-3. **Entity + Configuration** (I1, I2) — database model
-4. **Persistence mapping extensions** (I4) — entity ↔ DTO mapping
-5. **AppDbContext update** (I5) — add `DbSet<Customer>`
-6. **Repository implementation** (I3) — wire it up
-7. **DI registration** (I6) — register `ICustomerRepository`
-8. **Commands & Queries** (A4–A8) — Wolverine handlers
-9. **Application mapping extensions** (A11) — command ↔ DTO mapping
-10. **Validators** (A9–A10) — FluentValidation
-11. **API Request/Response models** (P1–P3) — API contracts
-12. **API mapping extensions** (P4) — request ↔ command, DTO ↔ response
-13. **Controller** (P5) — `CustomersController`
-14. **EF Core Migration** — generate and apply migration
-15. **Manual smoke test** — verify all endpoints
+1. **Create Application DTOs** (A1, A2) — Define `CustomerDto` and `CreateCustomerDto` records that serve as the contract between Application and Infrastructure layers.
+2. **Create Repository Interface** (A8) — Define `ICustomerRepository` in the Application layer.
+3. **Create Infrastructure Entity & Configuration** (I1, I2) — Define the `Customer` persistence entity and its Fluent API configuration (table name, PK, unique index, column constraints).
+4. **Create Persistence Mapping Extensions** (I3) — Entity ↔ DTO mapping extension methods.
+5. **Create Repository Implementation** (I4) — Implement full CRUD with duplicate key handling.
+6. **Update DbContext** (I5) — Add `DbSet<Customer>` to `AppDbContext`.
+7. **Register DI** (I6) — Add `ICustomerRepository` → `CustomerRepository` registration in `AddInfrastructure()`.
+8. **Create Application Mappings** (A9) — Command ↔ DTO mapping extensions.
+9. **Create Validators** (A10, A11) — FluentValidation validators for create and update commands.
+10. **Create Commands & Handlers** (A3, A4, A5) — Write operations with Wolverine handlers.
+11. **Create Queries & Handlers** (A6, A7) — Read operations with Wolverine handlers.
+12. **Create API Request/Response Models** (P1, P2, P3) — API contract models.
+13. **Create API Mapping Extensions** (P4) — Request ↔ Command, Dto ↔ Response mappings.
+14. **Create Controller** (P5) — `CustomersController` with all 5 endpoints using `IMessageBus`.
 
 ---
 
 ## Assumptions
 
-| # | Assumption | Justification |
-|---|------------|---------------|
-| 1 | Naming convention `CustomersController` (plural) | Matches existing `ApplicationsController` pattern and REST conventions |
-| 2 | Route prefix `/customers` (lowercase, plural) | Matches existing `/applications` pattern |
-| 3 | DTO property names use PascalCase (`FirstName`, `LastName`, `TaxId`) | C# conventions; DB column names use snake_case via Fluent API configuration |
-| 4 | `tax_id` uniqueness enforced at database level via unique index | Matches existing `Name` unique index pattern in `ApplicationEntityConfiguration` |
-| 5 | `Customer` entity class name (not `CustomerEntity`) | Matches existing `Application` entity naming (no "Entity" suffix). Architecture doc says "Entity name + 'Entity'" but existing code uses `Application` without suffix — following existing convention. |
-| 6 | No special authorization/authentication required beyond existing setup | Work item says "administrator" but no auth is specified. The existing `ApplicationsController` has no auth attributes. Following existing pattern. |
-| 7 | Wolverine `IMessageBus` is used in the controller | Matches existing `ApplicationsController` pattern |
-| 8 | DTOs use `record` types with standard class-like syntax | Per coding-standards.md hard rule: no positional record syntax |
-| 9 | `Guid.CreateVersion7()` for primary key generation | Per architecture.md DTO Design guidelines |
-| 10 | The existing `ExceptionHandlingMiddleware` pattern-matches `InvalidOperationException` messages for 404/409 | The existing "was not found" and "already exists" patterns cover the Customer use case without modification |
+| # | Assumption | Justification | User Decision |
+|---|------------|---------------|---------------|
+| 1 | `first_name` is optional (nullable) — only `last_name` and `tax_id` are marked mandatory in the model | Model definition explicitly marks `last_name` and `tax_id` with `Traits: mandatory` but `first_name` has no such trait | |
+| 2 | Duplicate `tax_id` should return HTTP 409 Conflict | Follows the same pattern as `ApplicationRepository` which returns `InvalidOperationException` for duplicate name violations, mapped to 409 by `ExceptionHandlingMiddleware` | |
+| 3 | `tax_id` is a free-text string field, not validated against any tax ID format | Model defines `tax_id` simply as `string(16)` with no format constraints | |
+| 4 | No authentication/authorization requirements are specified — controller uses the same pattern as `ApplicationsController` | The story says "as an administrator" but no auth mechanism is specified in the AC. We follow the existing controller pattern which has no `[Authorize]` attribute | |
+| 5 | The feature name directory uses PascalCase `CustomerManagement` matching the existing `ApplicationManagement` pattern | Follows existing project convention | |
+| 6 | The DB table name is `Customers` (plural) matching the `Applications` table convention | Follows existing project convention from `ApplicationEntityConfiguration` | |
+| 7 | Wolverine handler discovery in `DependencyInjection.cs` already covers the Application assembly — no changes needed for handler registration | `AddApplication()` already calls `opts.Discovery.IncludeAssembly(typeof(DependencyInjection).Assembly)` which covers all new handlers | |
 
 ---
 
 ## Questions for Clarification
 
-| # | Question | Impact |
-|---|----------|--------|
-| Q1 | Should there be a search/filter capability for `GET /customers` (e.g., by `tax_id` or `last_name`), or is the simple list-all sufficient for now? | Determines whether `GetCustomersQuery` needs optional filter parameters. Currently planned as simple list-all per the work item. |
-| Q2 | Should `DELETE` be a hard delete or soft delete (e.g., `IsDeleted` flag)? | Affects entity design, repository logic, and list query filtering. The existing `ApplicationRepository` uses hard delete — assumed same here. |
-| Q3 | Is any authentication/authorization middleware expected for these endpoints beyond what's already in the pipeline? | Work item mentions "administrator" — may need `[Authorize]` attributes if authentication is added later. |
+| # | Question | Impact | User Decision |
+|---|----------|--------|---------------|
+| Q1 | Should `first_name` be optional or mandatory? The model only marks `last_name` and `tax_id` as mandatory. | Determines the `IsRequired()` call in the entity configuration and `NotEmpty()` rule in validators | |
+| Q2 | Should `tax_id` be validated against any specific format (e.g., regex for tax ID format), or is any string up to 16 characters acceptable? | Determines whether additional FluentValidation rules are needed beyond NotEmpty+MaxLength | |
+| Q3 | Should there be a pagination mechanism for GET `/customers` (list all), or is returning all records acceptable for now? | Determines whether the query and repository need pagination/sorting parameters. Following `ApplicationRepository` pattern, there is no pagination currently | |
+| Q4 | The story metadata says `ticket_num: 001` but the file is named `002_customers.story.md`. Which ticket number should be used? | Affects branch naming, commit messages, and directory naming | |
 
 ---
 
@@ -231,5 +223,6 @@ CREATE UNIQUE INDEX "IX_Customers_tax_id" ON "Customers" ("tax_id");
 
 | Risk | Mitigation |
 |------|------------|
-| `DbUpdateException` duplicate key detection uses string matching on `InnerException.Message` | Same approach used in `ApplicationRepository`. PostgreSQL-specific but works. Could be improved with provider-specific exception handling in future. |
-| No dedicated `NotFoundException` or `ConflictException` — relies on `InvalidOperationException` message patterns in middleware | Existing pattern throughout codebase. Consistent but fragile. Could be improved with custom exception types later. |
+| Duplicate `tax_id` detection relies on parsing exception messages (`"duplicate key"`), which is fragile across database providers and cultures | Follows the established pattern in `ApplicationRepository`. Acceptable for now since PostgreSQL is the fixed provider. Consider a pre-check query if this becomes problematic |
+| No pagination on GET `/customers` could cause performance issues with large datasets | Follows the existing `GetApplicationsQuery` pattern. If dataset grows, pagination can be added as a follow-up |
+| `first_name` being nullable may cause issues in UI if a display name is always expected | Marked as a question (Q1) for user clarification before implementation |
