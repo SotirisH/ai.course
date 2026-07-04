@@ -11,6 +11,12 @@
         <PackageReference Include="WolverineFx.RuntimeCompilation"/>
     </ItemGroup>
 
+    <ItemGroup>
+      <Compile Remove="Features\CustomerManagement\Commands\DeleteCustomerCommand.cs" />
+      <Compile Remove="Features\CustomerManagement\DTOs\CreateCustomerDto.cs" />
+      <Compile Remove="Validators\CreateCustomerCommandValidator.cs" />
+    </ItemGroup>
+
     <PropertyGroup>
         <TargetFramework>net10.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>

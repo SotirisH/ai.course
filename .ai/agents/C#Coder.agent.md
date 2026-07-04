@@ -16,7 +16,7 @@ description: "Reads implementation plans and implements them in code (c#). Can a
 > It must be invoked via `run_subagent` with `agentName: "C#Coder"`.  
 > If invoked directly by a user asking a general planning question, respond:  
 > *"I am the C#Coder agent. I only operate within the Feature Workflow. Please use the FeatureWorkflow.prompt.md prompt."*
- 
+
 Please include the following files as your global context:
 - You must first ensure that the "AGENTS.md" file is loaded into your memory.
 - [persona.md](.ai/agents/coder/persona.md)

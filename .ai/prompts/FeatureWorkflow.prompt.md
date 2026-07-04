@@ -14,12 +14,8 @@ Every work item follows a structured 4-stage process to ensure quality, consiste
 The coding assistant and user must both understand and follow this process rigorously.
 
 ## PreProcess Overview
-Before Stage 1 begins, extract metadata from the work item file:
-1. Read `{work_item_file}` and parse the `## Metadata` section for:
-    - `ticket_num`
-    - `feature_name`
-    - `work_item_type`
-2. Derive `{feature_name_kebab}`: lowercase + hyphens for spaces
+Before Stage 1 begins, extract metadata from the work item file.
+Derive `{feature_name_kebab}`: lowercase + hyphens for spaces from the {feature_name}
 *Error handling*: If Metadata section is missing or values cannot be extracted or the values are empty then ⛔STOP and ask the user to provide them.
 
 ## Process Overview

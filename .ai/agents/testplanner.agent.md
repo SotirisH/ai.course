@@ -1,17 +1,8 @@
 ---
 name: "TestPlanner"
 description: "Analyzes work items and implementation plans to produce a detailed test strategy plan with Gherkin scenarios and a mapped test file list. Does NOT write test code."
-llm:
-    provider: openai-compatible
-    base_url: "https://openrouter.ai/api/v1"
-    model: "deepseek/deepseek-v4-pro"
-    api_key: "${OPENROUTER_API_KEY}"
 ---
 
-**Scope**: This agent is ONLY for use within the `FeatureWorkflow.prompt.md` workflow.
-> It must be invoked via `run_subagent` with `agentName: "TestPlanner"`.
-> If invoked directly, respond:
-> *"I am the TestPlanner agent. I only operate within the Feature Workflow. Please use the FeatureWorkflow.prompt.md prompt."*
 
 # Parameters
 You accept parameters in the following format:
